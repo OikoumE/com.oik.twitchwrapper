@@ -8,11 +8,30 @@ public class TwitchChatHandler
 {
     private readonly EventSubWebsocket _client;
     private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _commands;
+    private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _defaultCommands;
 
-    public TwitchChatHandler(EventSubWebsocket client)
+    public TwitchChatHandler(EventSubWebsocket client,
+        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands)
     {
         _client = client;
+        _commands = commands;
         SetupCommands();
+    }
+
+    private void SetupCommands()
+    {
+        _defaultCommands = new Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>>
+        {
+            {
+                new CommandString("hello", new[] { "hi" }),
+                (c, cx) => cx.SendChatMessage($"Hello {c.ChatterUserName}!")
+            },
+            {
+                new CommandString("about"),
+                (_, cx) => cx.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
+            },
+            { new CommandString("command", new[] { "commands", "cmd", "cmds" }), AvailableCommands }
+        };
     }
 
     /*
@@ -30,46 +49,20 @@ public class TwitchChatHandler
     {
         var displayName = chatCommand.ChatterUserName;
         var commandText = chatCommand.CommandText;
-
-        switch (commandText)
-        {
-            case "hello":
-                _client.SendChatMessage($"Hello {displayName}!");
-                return;
-            case "about":
-                _client.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!");
-                return;
-            case "command":
-
-                return;
-        }
-
+        
         foreach (var (command, action) in _commands)
+            if (command.Command == commandText || command.Aliases.Contains(commandText))
+                action.Invoke(chatCommand, _client);
+        foreach (var (command, action) in _defaultCommands)
             if (command.Command == commandText || command.Aliases.Contains(commandText))
                 action.Invoke(chatCommand, _client);
     }
 
     private void AvailableCommands(ChatCommand _, EventSubWebsocket __)
     {
-        var commands = _commands.Keys.Select(x => x.Command).ToArray();
+        var commands = _defaultCommands.Keys.Select(x => x.Command).ToArray();
         var reply = string.Join(", ", commands);
         _client.SendChatMessage(reply);
-    }
-
-    private void SetupCommands()
-    {
-        _commands = new Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>>
-        {
-            {
-                new CommandString("hello", new[] { "hi" }),
-                (c, cx) => cx.SendChatMessage($"Hello {c.ChatterUserName}!")
-            },
-            {
-                new CommandString("hello", new[] { "hi" }),
-                (_, cx) => cx.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
-            },
-            { new CommandString("hello", new[] { "hi" }), AvailableCommands }
-        };
     }
 
 
