@@ -57,28 +57,31 @@ public class EventSubWebsocket
         { 4006, "Network error" },
         { 4007, "Invalid reconnect" }
     };
+
     public EventSubWebsocket(int broadcasterId, string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
         string botId, int keepAlive = 30)
-        : this( broadcasterId.ToString(),
+        : this(broadcasterId.ToString(),
             clientId, eventHandlers, botId, keepAlive)
     {
     }
+
     public EventSubWebsocket(string broadcasterId,
         string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
         string botId,
         int keepAlive = 30)
     {
-        if (!int.TryParse(broadcasterId, out var _))
+        if (!int.TryParse(broadcasterId, out _))
         {
             // get twitch ID from name 
             Debug.Log($"BroadcasterId {broadcasterId} is not an integer, trying to fetch client id");
             var client = new HttpClient();
-            broadcasterId =  client.GetStringAsync("https://decapi.me/twitch/id/"+broadcasterId).Result;
-            Debug.Log($"Received BroadcasterId {broadcasterId}");
+            broadcasterId = client.GetStringAsync("https://decapi.me/twitch/id/" + broadcasterId).Result;
         }
-            
+
+        Debug.Log($"Using BroadcasterId {broadcasterId}");
+
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _botId = botId;

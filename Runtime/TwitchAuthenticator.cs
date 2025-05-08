@@ -127,7 +127,6 @@ public class TwitchAuthenticator
         };
         var content = new FormUrlEncodedContent(values);
         var response = client.PostAsync("https://id.twitch.tv/oauth2/token", content).Result;
-        Debug.Log($"DEBUG: response \n{response}");
         if (response.IsSuccessStatusCode)
         {
             var json = response.Content.ReadAsStringAsync().Result;
