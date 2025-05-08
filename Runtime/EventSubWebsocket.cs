@@ -79,10 +79,12 @@ public class EventSubWebsocket
     public void Close()
     {
         _cts.Cancel();
-        if (_ws.State != WebSocketState.Open) return;
         OnClose?.Invoke();
+        Debug.Log(_ws.State);
         try
+
         {
+            if (_ws.State == WebSocketState.Open) return;
             _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None).Wait();
         }
         catch (Exception)
@@ -143,7 +145,7 @@ public class EventSubWebsocket
         var buffer = new byte[4096];
         try
         {
-            while (_ws.State == WebSocketState.Open)
+            while (_ws.State == WebSocketState.Open && _cts.Token.IsCancellationRequested == false)
             {
                 var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                 var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
