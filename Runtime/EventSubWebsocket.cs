@@ -39,6 +39,8 @@ public class EventSubWebsocket
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
 
+    private readonly Action<bool> _onConnected;
+
     private readonly ClientWebSocket _ws = new();
 
     private string _sessionId;
@@ -60,17 +62,16 @@ public class EventSubWebsocket
 
     public EventSubWebsocket(int broadcasterId, string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        string botId, int keepAlive = 30)
+        string botId, Action<bool> onConnected = null, int keepAlive = 30)
         : this(broadcasterId.ToString(),
-            clientId, eventHandlers, botId, keepAlive)
+            clientId, eventHandlers, botId, onConnected, keepAlive)
     {
     }
 
     public EventSubWebsocket(string broadcasterId,
         string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        string botId,
-        int keepAlive = 30)
+        string botId, Action<bool> onConnected = null, int keepAlive = 30)
     {
         if (!int.TryParse(broadcasterId, out _))
         {
@@ -85,6 +86,7 @@ public class EventSubWebsocket
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _botId = botId;
+        _onConnected = onConnected;
         _broadcasterId = broadcasterId;
         _keepAlive = keepAlive;
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
@@ -156,15 +158,18 @@ public class EventSubWebsocket
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = _authenticator.RunDeviceFlowAsync();
         // Debug.Log($"\nDANGEROUS DEBUG: User DeviceToken {_tokenResponse?.AccessToken}");
-        Debug.Log("<color=green>Connecting</color> Websocket");
         var uri = CreateUri(_keepAlive);
         _ws.ConnectAsync(uri, CancellationToken.None).Wait();
-        Debug.Log("<color=green>Connected</color> to WebSocket");
+        var connected = _ws.State == WebSocketState.Open;
+        var status = "<color=green>Connected</color>";
+        if (!connected) status = "<color=red>Failed to Connect</color>";
+        Debug.Log($"{status} to WebSocket");
         Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
 
         try
         {
-            SendChatMessage("connected to websocket");
+            _onConnected?.Invoke(connected);
+            SendChatMessage("Connected to WebSocket!");
         }
         catch (Exception e)
         {
