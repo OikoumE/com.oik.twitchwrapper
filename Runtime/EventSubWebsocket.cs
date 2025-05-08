@@ -79,6 +79,7 @@ public class EventSubWebsocket
 
     public void Close()
     {
+        Api.SendChatMessage("Disconnecting from Websocket!");
         _cts.Cancel();
         OnClose?.Invoke();
         try
