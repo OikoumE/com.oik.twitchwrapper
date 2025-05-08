@@ -11,7 +11,7 @@ public static class TokenWrapper
 
     public static void OpenFolder()
     {
-        Process.Start("explorer.exe", "/select,\"" + GetPath().Replace("/", "\\") + "\"");
+        Process.Start("explorer.exe", "/select,\"" + Application.persistentDataPath.Replace("/", "\\") + "\"");
     }
 
     private static string GetPath()
