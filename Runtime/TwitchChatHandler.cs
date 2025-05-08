@@ -7,7 +7,7 @@ using UnityEngine;
 public class TwitchChatHandler
 {
     private readonly EventSubWebsocket _client;
-    private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _commands;
+    private readonly Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _commands;
     private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _defaultCommands;
 
     public TwitchChatHandler(EventSubWebsocket client,
@@ -49,7 +49,7 @@ public class TwitchChatHandler
     {
         var displayName = chatCommand.ChatterUserName;
         var commandText = chatCommand.CommandText;
-        
+
         foreach (var (command, action) in _commands)
             if (command.Command == commandText || command.Aliases.Contains(commandText))
                 action.Invoke(chatCommand, _client);
@@ -91,73 +91,5 @@ public class TwitchChatHandler
         var chatterUserName = eventNotification?["chatter_user_name"]?.ToString();
 
         return new ChatMessage(messageText, chatterUserId, chatterUserLogin, chatterUserName);
-    }
-
-    public class ChatMessage
-    {
-        public readonly string ChatterUserName;
-        public readonly string MessageText;
-        public string ChatterUserId;
-        public string ChatterUserLogin;
-
-        public ChatMessage(string messageText, string chatterUserId, string chatterUserLogin,
-            string chatterUserName)
-        {
-            MessageText = messageText;
-            ChatterUserId = chatterUserId;
-            ChatterUserLogin = chatterUserLogin;
-            ChatterUserName = chatterUserName;
-        }
-
-        public int userId => int.Parse(ChatterUserId);
-    }
-
-    public class CommandString
-    {
-        public string[] Aliases;
-        public string Command;
-
-        public CommandString(string command, string[] aliases = null)
-        {
-            Command = command;
-            Aliases = aliases ?? Array.Empty<string>();
-        }
-
-        public bool IsTarget(string command)
-        {
-            return Command == command || Aliases.Contains(command);
-        }
-    }
-
-    public class ChatCommand
-    {
-        public readonly string ChatterUserId;
-        public readonly string ChatterUserLogin;
-        public readonly string ChatterUserName;
-        public readonly string CommandText;
-        public readonly string Identifier;
-        public readonly string MessageText;
-
-        public ChatCommand(ChatMessage msg)
-        {
-            var cmd = msg.MessageText.Split(" ");
-            CommandText = cmd[0][1..];
-            Identifier = cmd[0][..1];
-            MessageText = string.Join(" ", cmd[1..]);
-            ChatterUserId = msg.ChatterUserId;
-            ChatterUserLogin = msg.ChatterUserLogin;
-            ChatterUserName = msg.ChatterUserName;
-        }
-
-        public (string identifier, string cmd, string msg, int userID, string userName, string displayName)
-            Deconstruct()
-        {
-            return (Identifier,
-                CommandText,
-                MessageText,
-                int.Parse(ChatterUserId),
-                ChatterUserLogin,
-                ChatterUserName);
-        }
     }
 }
