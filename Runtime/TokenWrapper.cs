@@ -1,6 +1,7 @@
 ﻿using System.Diagnostics;
 using System.IO;
 using Newtonsoft.Json;
+using UnityEngine;
 using Debug = UnityEngine.Debug;
 
 public static class TokenWrapper
@@ -15,7 +16,7 @@ public static class TokenWrapper
 
     private static string GetPath()
     {
-        return Path.Combine(FilePath, FileName);
+        return Path.Combine(Application.persistentDataPath, FileName);
     }
 
     public static void SaveToJson(TokenResponse token)
