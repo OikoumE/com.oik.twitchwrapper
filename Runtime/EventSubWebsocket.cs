@@ -29,13 +29,13 @@ public class EventSubWebsocket
     private readonly TwitchAuthenticator _authenticator;
     private readonly string _botId;
     private readonly string _clientId;
-    private readonly CancellationTokenSource _cts = new();
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
     private string _broadcasterId;
 
     private string _broadcasterName;
+    private CancellationTokenSource _cts;
     private string _sessionId;
     private float _timeOfLastKeepAlive;
     private TokenResponse _tokenResponse;
@@ -115,7 +115,8 @@ public class EventSubWebsocket
         Debug.Log($"Using BroadcasterId {_broadcasterId}");
 
         var uri = CreateUri(_keepAlive);
-
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
         _ws?.Dispose();
         _ws = new ClientWebSocket();
         _ws.ConnectAsync(uri, _cts.Token).Wait();
