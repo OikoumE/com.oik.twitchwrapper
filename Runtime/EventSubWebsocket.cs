@@ -54,6 +54,8 @@ public class EventSubWebsocket
     };
 
     public TwitchApi Api;
+
+    public Action OnClose;
     public Action<bool, string> OnConnected;
 
     public EventSubWebsocket(string clientId,
@@ -78,6 +80,7 @@ public class EventSubWebsocket
     {
         _cts.Cancel();
         if (_ws.State != WebSocketState.Open) return;
+        OnClose?.Invoke();
         try
         {
             _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None).Wait();
@@ -106,7 +109,6 @@ public class EventSubWebsocket
         _tokenResponse = _authenticator.RunDeviceFlowAsync();
         // Debug.Log($"\nDANGEROUS DEBUG: User DeviceToken {_tokenResponse?.AccessToken}");
 
-
         //TODO
         // getUsers
 
@@ -120,7 +122,6 @@ public class EventSubWebsocket
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
         Debug.Log($"{status} to WebSocket");
-
 
         Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
 
@@ -160,6 +161,7 @@ public class EventSubWebsocket
         }
 
         Debug.LogWarning($"Socket status: {_ws.State}");
+        OnClose?.Invoke();
     }
 
     private void HandleIncomingMessage(JObject json)

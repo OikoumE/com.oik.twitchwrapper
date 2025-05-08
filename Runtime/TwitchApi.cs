@@ -20,6 +20,33 @@ public class TwitchApi
         SetBroadcaster();
     }
 
+    private void SetBroadcaster()
+    {
+        var result = GetUsers();
+        (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
+    }
+
+    private static (string Id, string Name) ParseBroadcasterUser(string result)
+    {
+        var json = JObject.Parse(result);
+        var metaData = json["data"]?[0];
+        var broadcasterId = metaData?["id"]?.ToString();
+        var broadcasterName = metaData?["display_name"]?.ToString();
+        return (broadcasterId, broadcasterName);
+    }
+
+    public static (string Id, string Name) GetBroadcaster(string clientId,
+        TokenResponse tokenResponse)
+    {
+        var result = GetUsers(tokenResponse, clientId);
+        return ParseBroadcasterUser(result);
+    }
+
+    public (string Id, string Name) GetBroadcaster()
+    {
+        return (Id: _broadcasterId, Name: _broadcasterName);
+    }
+
     public HttpResponseMessage SubscribeToEvents(object subscriptionData)
     {
         using var client = new HttpClient();
@@ -34,14 +61,6 @@ public class TwitchApi
         return response;
     }
 
-    private void SetBroadcaster()
-    {
-        var result = GetUsers();
-        var json = JObject.Parse(result);
-        var metaData = json["data"]?[0];
-        _broadcasterId = metaData?["id"]?.ToString();
-        _broadcasterName = metaData?["display_name"]?.ToString();
-    }
 
     public void SendChatMessage(string chatMessage)
     {
@@ -90,18 +109,17 @@ public class TwitchApi
 
     private string GetUsers(string query = "")
     {
+        return GetUsers(_tokenResponse, _clientId, query);
+    }
+
+    private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
+    {
         using var client = new HttpClient();
-        var accessToken = _tokenResponse.AccessToken;
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", accessToken);
-        client.DefaultRequestHeaders.Add("Client-Id", _clientId);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
+        client.DefaultRequestHeaders.Add("Client-Id", clientId);
         var url = "https://api.twitch.tv/helix/users";
         if (!string.IsNullOrEmpty(query)) url += $"?{query}";
         var response = client.GetAsync(url).Result;
         return response.Content.ReadAsStringAsync().Result;
-    }
-
-    public (string _broadcasterId, string _broadcasterName) GetBroadcaster()
-    {
-        return (_broadcasterId, _broadcasterName);
     }
 }
