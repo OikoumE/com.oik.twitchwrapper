@@ -1,0 +1,13 @@
+{
+  "name": "com.oik.twitchwrapper",
+  "version": "1.0.0",
+  "displayName": "TwitchWrapper",
+  "description": "Description",
+  "unity": "2020.3",
+  "author": {
+    "name": "Oik"
+  },
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
+}
