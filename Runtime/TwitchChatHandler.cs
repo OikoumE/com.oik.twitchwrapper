@@ -29,11 +29,11 @@ public class TwitchChatHandler
         {
             {
                 new CommandString("hello", new[] { "hi" }),
-                (c, cx) => cx.SendChatMessage($"Hello {c.ChatterUserName}!")
+                (c, cx) => cx.Api.SendChatMessage($"Hello {c.ChatterUserName}!")
             },
             {
                 new CommandString("about"),
-                (_, cx) => cx.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
+                (_, cx) => cx.Api.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
             },
             { new CommandString("command", new[] { "commands", "cmd", "cmds" }), AvailableCommands }
         };
@@ -87,7 +87,7 @@ public class TwitchChatHandler
 
         var reply = string.Join(", ", defaultCommands);
         reply += ", " + string.Join(", ", commands);
-        _client.SendChatMessage(reply);
+        _client.Api.SendChatMessage(reply);
     }
 
 

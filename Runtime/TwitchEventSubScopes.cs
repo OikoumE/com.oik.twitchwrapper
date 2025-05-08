@@ -88,7 +88,6 @@ public static class TwitchEventSubScopes
         UserWhisperMessage
     }
 
-
     private static readonly ScopeApiVersion[] EventSubScopes =
     {
         new(EScope.AutomodMessageHold,
@@ -240,15 +239,45 @@ public static class TwitchEventSubScopes
             "user.whisper.message", "1", "user:manage:whispers")
     };
 
-    public static ScopeApiVersion GetApiVersion(EScope eScope)
+    public static object GetScopeCondition(EScope s, string broadcasterId)
     {
+        //TODO edge case - conditions
+        return s switch
+        {
+            EScope.ChannelRaid => new
+            {
+                to_broadcaster_user_id = broadcasterId
+                //from_broadcaster_user_id = _broadcasterId,
+            },
+            EScope.ChannelUnbanRequestCreate
+                or EScope.ChannelUnbanRequestResolve
+                or EScope.ChannelGuestStarGuestUpdate
+                or EScope.ChannelGuestStarSessionBegin
+                or EScope.ChannelGuestStarSessionEnd
+                or EScope.ChannelGuestStarSettingsUpdate
+                or EScope.ChannelFollow => new
+                {
+                    broadcaster_user_id = broadcasterId, moderator_user_id = broadcasterId
+                },
+            EScope.ChannelPointsCustomRewardAdd
+                or EScope.ChannelPointsCustomRewardRedemptionAdd
+                or EScope.ChannelPointsCustomRewardRedemptionUpdate
+                or EScope.ChannelPointsCustomRewardRemove
+                or EScope.ChannelPointsCustomRewardUpdate => new
+                {
+                    broadcaster_user_id = broadcasterId
+                    //optionally reward_id
+                },
+            _ => new { broadcaster_user_id = broadcasterId, user_id = broadcasterId }
+        };
+    }
+
+    public static ScopeApiVersion GetApiVersion(EScope eScope, string broadcasterId, out object condition)
+    {
+        condition = GetScopeCondition(eScope, broadcasterId);
         return EventSubScopes.First(x => x.Scope == eScope);
     }
 
-    public static string GetUrlScope(EScope eScope)
-    {
-        return EventSubScopes.First(x => x.Scope == eScope).UrlScope;
-    }
 
     public static string GetUrlScopes(EScope[] eScope)
     {
@@ -262,17 +291,11 @@ public static class TwitchEventSubScopes
         return scopeString;
     }
 
-
     public static EScope GetScope(string apiName)
     {
         if (string.IsNullOrEmpty(apiName))
             throw new ArgumentNullException(nameof(apiName));
         return EventSubScopes.First(x => x.ApiName == apiName).Scope;
-    }
-
-    public static ScopeApiVersion[] GetApiVersions(EScope[] eScope)
-    {
-        return eScope.Select(GetApiVersion).ToArray();
     }
 }
 

@@ -3,12 +3,10 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
@@ -26,25 +24,20 @@ using UnityEngine;
 
 // messages. track message_id to avoid dupes
 // messages. dont accept message_timestamp older than 600s and unique message_id
-
 public class EventSubWebsocket
 {
     private readonly TwitchAuthenticator _authenticator;
     private readonly string _botId;
-    private readonly string _broadcasterId;
     private readonly string _clientId;
     private readonly CancellationTokenSource _cts = new();
-
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
-
-    private readonly Action<bool> _onConnected;
-
     private readonly ClientWebSocket _ws = new();
+    private string _broadcasterId;
 
+    private string _broadcasterName;
     private string _sessionId;
-
     private float _timeOfLastKeepAlive;
     private TokenResponse _tokenResponse;
 
@@ -60,35 +53,18 @@ public class EventSubWebsocket
         { 4007, "Invalid reconnect" }
     };
 
-    public EventSubWebsocket(int broadcasterId, string clientId,
+    public TwitchApi Api;
+    public Action<bool, string> OnConnected;
+
+    public EventSubWebsocket(string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        string botId, Action<bool> onConnected = null, int keepAlive = 30)
-        : this(broadcasterId.ToString(),
-            clientId, eventHandlers, botId, onConnected, keepAlive)
+        string botId, int keepAlive = 30)
     {
-    }
-
-    public EventSubWebsocket(string broadcasterId,
-        string clientId,
-        Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        string botId, Action<bool> onConnected = null, int keepAlive = 30)
-    {
-        if (!int.TryParse(broadcasterId, out _))
-        {
-            // get twitch ID from name 
-            Debug.Log($"BroadcasterId {broadcasterId} is not an integer, trying to fetch client id");
-            var client = new HttpClient();
-            broadcasterId = client.GetStringAsync("https://decapi.me/twitch/id/" + broadcasterId).Result;
-        }
-
-        Debug.Log($"Using BroadcasterId {broadcasterId}");
-
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _botId = botId;
-        _onConnected = onConnected;
-        _broadcasterId = broadcasterId;
         _keepAlive = keepAlive;
+
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
     }
@@ -112,35 +88,6 @@ public class EventSubWebsocket
         }
     }
 
-    public void SendChatMessage(string chatMessage)
-    {
-        using var client = new HttpClient();
-        //TODO to send msg's as bot, we need a token for bot...
-        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + _tokenResponse.AccessToken);
-        client.DefaultRequestHeaders.Add("Client-Id", _clientId);
-
-        var payload = new
-        {
-            broadcaster_id = _broadcasterId,
-            sender_id = _broadcasterId,
-            message = chatMessage
-        };
-
-        var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-        var response = client.PostAsync("https://api.twitch.tv/helix/chat/messages", content).Result;
-
-        if (response.IsSuccessStatusCode)
-        {
-            Debug.Log("Sent chat message: " + chatMessage);
-        }
-        else
-        {
-            var error = response.Content.ReadAsStringAsync().Result;
-            Debug.LogError("Failed to send chat message");
-            Debug.LogError(error);
-        }
-    }
-
     private Uri CreateUri(int keepAlive)
     {
         keepAlive = keepAlive switch
@@ -158,18 +105,28 @@ public class EventSubWebsocket
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = _authenticator.RunDeviceFlowAsync();
         // Debug.Log($"\nDANGEROUS DEBUG: User DeviceToken {_tokenResponse?.AccessToken}");
+
+
+        //TODO
+        // getUsers
+
+        Api = new TwitchApi(_clientId, _tokenResponse);
+        (_broadcasterId, _broadcasterName) = Api.GetBroadcaster();
+        Debug.Log($"Using BroadcasterId {_broadcasterId}");
+
         var uri = CreateUri(_keepAlive);
         _ws.ConnectAsync(uri, CancellationToken.None).Wait();
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
         Debug.Log($"{status} to WebSocket");
+
+
         Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
 
         try
         {
-            _onConnected?.Invoke(connected);
-            SendChatMessage("Connected to WebSocket!");
+            Api.SendChatMessage("Connected to WebSocket!");
         }
         catch (Exception e)
         {
@@ -265,84 +222,15 @@ public class EventSubWebsocket
             throw new NullReferenceException("session id is null");
         _sessionId = $"{sessionId}";
         //! 10 sec limit to respond
-        foreach (var eventHandlersKey in _eventHandlers.Keys)
-            SubscribeToEvents(eventHandlersKey);
+        foreach (var scope in _eventHandlers.Keys)
+            SubscribeEvent(scope);
+        OnConnected?.Invoke(true, _broadcasterName);
     }
 
-    private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
+    private void SubscribeEvent(TwitchEventSubScopes.EScope scope)
     {
-        var eventSubScope = TwitchEventSubScopes.GetApiVersion(scope);
-        var subscriptionData = new
-        {
-            type = eventSubScope.ApiName,
-            version = eventSubScope.Version,
-
-            condition = GetScopeCondition(scope),
-            transport = new
-            {
-                method = "websocket",
-                session_id = _sessionId
-            }
-        };
-        return subscriptionData;
-
-        object GetScopeCondition(TwitchEventSubScopes.EScope s)
-        {
-            switch (s)
-            {
-                case TwitchEventSubScopes.EScope.ChannelRaid:
-                    return new
-                    {
-                        to_broadcaster_user_id = _broadcasterId
-                        //from_broadcaster_user_id = _broadcasterId,
-                    };
-                case TwitchEventSubScopes.EScope.ChannelUnbanRequestCreate:
-                case TwitchEventSubScopes.EScope.ChannelUnbanRequestResolve:
-                case TwitchEventSubScopes.EScope.ChannelGuestStarGuestUpdate:
-                case TwitchEventSubScopes.EScope.ChannelGuestStarSessionBegin:
-                case TwitchEventSubScopes.EScope.ChannelGuestStarSessionEnd:
-                case TwitchEventSubScopes.EScope.ChannelGuestStarSettingsUpdate:
-                case TwitchEventSubScopes.EScope.ChannelFollow:
-                    return new
-                    {
-                        broadcaster_user_id = _broadcasterId,
-                        moderator_user_id = _broadcasterId
-                    };
-                case TwitchEventSubScopes.EScope.ChannelPointsCustomRewardAdd:
-                case TwitchEventSubScopes.EScope.ChannelPointsCustomRewardRedemptionAdd:
-                case TwitchEventSubScopes.EScope.ChannelPointsCustomRewardRedemptionUpdate:
-                case TwitchEventSubScopes.EScope.ChannelPointsCustomRewardRemove:
-                case TwitchEventSubScopes.EScope.ChannelPointsCustomRewardUpdate:
-                    return new
-                    {
-                        broadcaster_user_id = _broadcasterId
-                        //optionally reward_id
-                    };
-                default:
-                    return new
-                    {
-                        //TODO moderator - conditions
-                        broadcaster_user_id = _broadcasterId,
-                        user_id = _broadcasterId
-                    };
-            }
-        }
-    }
-
-    private void SubscribeToEvents(TwitchEventSubScopes.EScope scope)
-    {
-        using var client = new HttpClient();
-
         var subscriptionData = GetSubscriptionCondition(scope);
-        var jsonBody = JsonConvert.SerializeObject(subscriptionData);
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
-        client.DefaultRequestHeaders.Add("Client-Id", _clientId);
-
-        var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
-        var response = client.PostAsync(uri, content).Result;
-        var msg = response.Content.ReadAsStringAsync().Result;
+        var response = Api.SubscribeToEvents(subscriptionData);
         var isSuccess = response.IsSuccessStatusCode;
         Debug.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
                   $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
@@ -355,7 +243,7 @@ public class EventSubWebsocket
             if (_tokenResponse == null)
                 throw new Exception("Failed to refresh token");
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
-            SubscribeToEvents(scope);
+            SubscribeEvent(scope);
         }
         else if (!isSuccess)
         {
@@ -363,5 +251,22 @@ public class EventSubWebsocket
             var responseBody = response.Content.ReadAsStringAsync().Result;
             Debug.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
         }
+    }
+
+    private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
+    {
+        var eventSubScope = TwitchEventSubScopes.GetApiVersion(scope, _broadcasterId, out var condition);
+        var subscriptionData = new
+        {
+            type = eventSubScope.ApiName,
+            version = eventSubScope.Version,
+            condition,
+            transport = new
+            {
+                method = "websocket",
+                session_id = _sessionId
+            }
+        };
+        return subscriptionData;
     }
 }
