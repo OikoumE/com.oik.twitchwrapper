@@ -33,7 +33,6 @@ public class EventSubWebsocket
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
-    private readonly ClientWebSocket _ws = new();
     private string _broadcasterId;
 
     private string _broadcasterName;
@@ -52,6 +51,8 @@ public class EventSubWebsocket
         { 4006, "Network error" },
         { 4007, "Invalid reconnect" }
     };
+
+    private ClientWebSocket _ws;
 
     public TwitchApi Api;
 
@@ -80,17 +81,16 @@ public class EventSubWebsocket
     {
         _cts.Cancel();
         OnClose?.Invoke();
-        Debug.Log(_ws.State);
         try
-
         {
-            if (_ws.State == WebSocketState.Open) return;
-            _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", CancellationToken.None).Wait();
+            _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token).Wait();
         }
         catch (Exception)
         {
             /* swallow if socket is already closing/closed */
         }
+
+        Debug.Log($"Websocket closed {_ws.State}");
     }
 
     private Uri CreateUri(int keepAlive)
@@ -109,17 +109,16 @@ public class EventSubWebsocket
     {
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = _authenticator.RunDeviceFlowAsync();
-        // Debug.Log($"\nDANGEROUS DEBUG: User DeviceToken {_tokenResponse?.AccessToken}");
-
-        //TODO
-        // getUsers
 
         Api = new TwitchApi(_clientId, _tokenResponse);
         (_broadcasterId, _broadcasterName) = Api.GetBroadcaster();
         Debug.Log($"Using BroadcasterId {_broadcasterId}");
 
         var uri = CreateUri(_keepAlive);
-        _ws.ConnectAsync(uri, CancellationToken.None).Wait();
+
+        _ws?.Dispose();
+        _ws = new ClientWebSocket();
+        _ws.ConnectAsync(uri, _cts.Token).Wait();
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
