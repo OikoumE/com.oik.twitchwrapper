@@ -78,7 +78,12 @@ public class EventSubWebsocket
     {
         ChatHandler = new TwitchChatHandler(this, chatCommands);
         var chatScope = TwitchEventSubScopes.EScope.ChannelChatMessage;
-        _eventHandlers.TryGetValue(chatScope, out var handler);
+        if (!_eventHandlers.TryGetValue(chatScope, out var handler))
+        {
+            _eventHandlers.Add(chatScope, ChatHandler.OnChatMessage);
+            return;
+        }
+
         handler += ChatHandler.OnChatMessage;
         _eventHandlers[chatScope] = handler;
     }
