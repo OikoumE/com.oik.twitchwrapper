@@ -30,7 +30,8 @@ public class TwitchAuthenticator
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
         // TODO validate token
-        if (tokenResponse != null) return tokenResponse;
+        var isValid = TwitchApi.ValidateToken(tokenResponse);
+        if (tokenResponse != null && isValid) return tokenResponse;
         return await DeviceFlow(ct);
     }
 
@@ -38,6 +39,9 @@ public class TwitchAuthenticator
     {
         var deviceCodeResponse = RequestDeviceCode(ct);
         if (deviceCodeResponse == null) return null;
+
+        Debug.LogWarning("opening browser!");
+        // Open the URL in the default browser
         Process.Start(new ProcessStartInfo
         {
             FileName = deviceCodeResponse.VerificationUri,
@@ -45,7 +49,6 @@ public class TwitchAuthenticator
         });
         return await PollForTokens(deviceCodeResponse, ct);
     }
-
 
     private DeviceCodeResponse RequestDeviceCode(CancellationToken ct)
     {
@@ -80,7 +83,11 @@ public class TwitchAuthenticator
         while (!ct.IsCancellationRequested)
         {
             if (stopwatch.ElapsedMilliseconds > timeOut)
+            {
+                Debug.LogError("Auth timed out!");
                 break;
+            }
+
             var resp = await _client.PostAsync(url, payload, ct);
             if (resp.IsSuccessStatusCode)
             {

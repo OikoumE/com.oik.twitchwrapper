@@ -35,6 +35,8 @@ public class EventSubWebsocket
 
     private string _broadcasterName;
     private CancellationTokenSource _cts;
+
+    private bool _isConnecting;
     private string _sessionId;
     private float _timeOfLastKeepAlive;
     private TokenResponse _tokenResponse;
@@ -110,9 +112,15 @@ public class EventSubWebsocket
         return new Uri($"wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={keepAlive}");
     }
 
-
     public async Task Connect()
     {
+        if (_isConnecting)
+        {
+            Debug.LogError("Already connecting");
+            return;
+        }
+
+        _isConnecting = true;
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync();
 
@@ -131,11 +139,13 @@ public class EventSubWebsocket
         if (!connected) status = "<color=red>Failed to Connect</color>";
         Debug.Log($"{status} to WebSocket");
 
+        _isConnecting = false;
+
         await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
 
         try
         {
-            Api.SendChatMessage("Connected to WebSocket!");
+            Api?.SendChatMessage("Connected to WebSocket!");
         }
         catch (Exception e)
         {
