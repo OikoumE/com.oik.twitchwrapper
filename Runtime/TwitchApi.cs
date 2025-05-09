@@ -140,7 +140,7 @@ public class TwitchApi
 
         if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
-        var response = client.GetAsync(uri).Result;
+        var response = client.SendAsync(request).Result;
         return response.Content.ReadAsStringAsync().Result;
     }
 }
