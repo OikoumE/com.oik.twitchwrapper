@@ -1,6 +1,6 @@
 {
   "name": "com.oik.twitchwrapper",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "displayName": "TwitchWrapper",
   "description": "Oik's twitch eventSub wrapper",
   "unity": "2020.3",

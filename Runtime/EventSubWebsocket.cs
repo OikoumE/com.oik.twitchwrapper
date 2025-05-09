@@ -282,12 +282,12 @@ public class EventSubWebsocket
 
     private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
     {
-        var eventSubScope = TwitchEventSubScopes.GetApiVersion(scope, _broadcasterId, out var condition);
+        var eventSubScope = TwitchEventSubScopes.GetApiVersion(scope, _broadcasterId, out var subCondition);
         var subscriptionData = new
         {
             type = eventSubScope.ApiName,
             version = eventSubScope.Version,
-            condition,
+            condition = subCondition,
             transport = new
             {
                 method = "websocket",
