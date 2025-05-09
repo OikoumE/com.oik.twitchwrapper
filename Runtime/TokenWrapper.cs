@@ -40,7 +40,7 @@ public static class TokenWrapper
         var path = GetPath();
         if (!File.Exists(path))
         {
-            Debug.LogError("Failed to load AccessToken, proceeding with DCF auth");
+            Debug.LogError("No AccessToken stored");
             return null;
         }
 
