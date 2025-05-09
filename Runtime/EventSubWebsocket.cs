@@ -85,7 +85,9 @@ public class EventSubWebsocket
     public void Close()
     {
         if (_cts?.IsCancellationRequested ?? true) return;
+#if !UNITY_EDITOR
         Api?.SendChatMessage("Disconnecting from Websocket!");
+#endif
         _cts.Cancel();
         OnClose?.Invoke();
         try
@@ -144,6 +146,7 @@ public class EventSubWebsocket
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
         Debug.Log($"WebSocket Status: {status}");
+#if !UNITY_EDITOR
         try
         {
             Api?.SendChatMessage("Connected to WebSocket!");
@@ -153,6 +156,7 @@ public class EventSubWebsocket
             Debug.LogError(e);
             throw;
         }
+#endif
 
         _isConnecting = false;
         await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
