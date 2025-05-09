@@ -37,9 +37,12 @@ public class TwitchAuthenticator
 
         var url = "https://id.twitch.tv/oauth2/token";
         var delay = TimeSpan.FromSeconds(deviceResp.Interval);
-
+        var stopwatch = Stopwatch.StartNew();
+        var timeOut = 60 * 1000;
         while (!ct.IsCancellationRequested)
         {
+            if (stopwatch.ElapsedMilliseconds > timeOut)
+                break;
             var resp = _client.PostAsync(url, payload, ct).Result;
             if (resp.IsSuccessStatusCode)
             {
