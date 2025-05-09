@@ -23,6 +23,7 @@ public class TwitchApi
     private void SetBroadcaster()
     {
         var result = GetUsers();
+        Debug.Log(result);
         (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
         Debug.Log($"Setting Broadcaster: id {_broadcasterId}, name {_broadcasterName}");
     }
