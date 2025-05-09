@@ -133,7 +133,6 @@ public class EventSubWebsocket
 
         Api = new TwitchApi(_clientId, _tokenResponse);
         (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse);
-        Debug.Log($"Using BroadcasterId {_broadcasterId}");
 
         var uri = CreateUri(_keepAlive);
         _cts?.Dispose();
@@ -144,12 +143,7 @@ public class EventSubWebsocket
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
-        Debug.Log($"{status} to WebSocket");
-
-        _isConnecting = false;
-
-        await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
-
+        Debug.Log($"WebSocket Status: {status}");
         try
         {
             Api?.SendChatMessage("Connected to WebSocket!");
@@ -159,6 +153,9 @@ public class EventSubWebsocket
             Debug.LogError(e);
             throw;
         }
+
+        _isConnecting = false;
+        await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
     }
 
 
