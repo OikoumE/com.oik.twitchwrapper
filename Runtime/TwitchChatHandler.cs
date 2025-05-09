@@ -62,7 +62,6 @@ public class TwitchChatHandler
 
         var time = DateTime.Now.ToString("HH:mm:ss");
         Debug.Log($"{time} - {msg.ChatterUserName}: {msg.MessageText}");
-        // GlobalEventBus.Publish(new OnChatMessage(e));
     }
 
     private void OnChatCommand(ChatCommand chatCommand)
@@ -91,7 +90,7 @@ public class TwitchChatHandler
     }
 
 
-    private static ChatMessage ParseChatMessagePayload(JObject payload)
+    public static ChatMessage ParseChatMessagePayload(JObject payload)
     {
         var eventNotification = payload?["event"];
         var message = eventNotification?["message"];

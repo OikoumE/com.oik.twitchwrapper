@@ -25,43 +25,11 @@ public class TwitchAuthenticator
         _scopes = scopes;
     }
 
-    private async Task<TokenResponse> PollForTokens(DeviceCodeResponse deviceResp, CancellationToken ct)
-    {
-        var payload = new MultipartFormDataContent
-        {
-            { new StringContent(_clientId), "client_id" },
-            { new StringContent(_scopes), "scopes" },
-            { new StringContent(deviceResp.DeviceCode), "device_code" },
-            { new StringContent("urn:ietf:params:oauth:grant-type:device_code"), "grant_type" }
-        };
-
-        var url = "https://id.twitch.tv/oauth2/token";
-        var delay = TimeSpan.FromSeconds(deviceResp.Interval);
-        var stopwatch = Stopwatch.StartNew();
-        var timeOut = 60 * 1000;
-        while (!ct.IsCancellationRequested)
-        {
-            if (stopwatch.ElapsedMilliseconds > timeOut)
-                break;
-            var resp = await _client.PostAsync(url, payload, ct);
-            if (resp.IsSuccessStatusCode)
-            {
-                var json = resp.Content.ReadAsStringAsync().Result;
-                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(json);
-                TokenWrapper.SaveToJson(tokenResponse);
-                return tokenResponse;
-            }
-
-            await Task.Delay(delay, ct);
-        }
-
-        return null;
-    }
-
     public async Task<TokenResponse> RunDeviceFlowAsync(CancellationToken ct = default)
     {
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
+        // TODO validate token
         if (tokenResponse != null) return tokenResponse;
         return await DeviceFlow(ct);
     }
@@ -93,6 +61,39 @@ public class TwitchAuthenticator
         //5. deserialize
         var result = response.Content.ReadAsStringAsync().Result;
         return JsonConvert.DeserializeObject<DeviceCodeResponse>(result);
+    }
+
+    private async Task<TokenResponse> PollForTokens(DeviceCodeResponse deviceResp, CancellationToken ct)
+    {
+        var payload = new MultipartFormDataContent
+        {
+            { new StringContent(_clientId), "client_id" },
+            { new StringContent(_scopes), "scopes" },
+            { new StringContent(deviceResp.DeviceCode), "device_code" },
+            { new StringContent("urn:ietf:params:oauth:grant-type:device_code"), "grant_type" }
+        };
+
+        var url = "https://id.twitch.tv/oauth2/token";
+        var delay = TimeSpan.FromSeconds(deviceResp.Interval);
+        var stopwatch = Stopwatch.StartNew();
+        var timeOut = 60 * 1000;
+        while (!ct.IsCancellationRequested)
+        {
+            if (stopwatch.ElapsedMilliseconds > timeOut)
+                break;
+            var resp = await _client.PostAsync(url, payload, ct);
+            if (resp.IsSuccessStatusCode)
+            {
+                var json = resp.Content.ReadAsStringAsync().Result;
+                var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(json);
+                TokenWrapper.SaveToJson(tokenResponse);
+                return tokenResponse;
+            }
+
+            await Task.Delay(delay, ct);
+        }
+
+        return null;
     }
 
     public async Task<TokenResponse> Handle401(string clientId, TokenResponse tokenResponse)

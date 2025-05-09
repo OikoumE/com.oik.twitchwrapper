@@ -27,7 +27,6 @@ using UnityEngine;
 public class EventSubWebsocket
 {
     private readonly TwitchAuthenticator _authenticator;
-    private readonly string _botId;
     private readonly string _clientId;
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
@@ -55,18 +54,22 @@ public class EventSubWebsocket
     private ClientWebSocket _ws;
 
     public TwitchApi Api;
+    public TwitchChatHandler ChatHandler;
 
     public Action OnClose;
     public Action<bool, string> OnConnected;
 
     public EventSubWebsocket(string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        string botId, int keepAlive = 30)
+        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
+        int keepAlive = 30)
     {
         _clientId = clientId;
         _eventHandlers = eventHandlers;
-        _botId = botId;
         _keepAlive = keepAlive;
+
+        if (chatCommands != null || eventHandlers.ContainsKey(TwitchEventSubScopes.EScope.ChannelChatMessage))
+            ChatHandler = new TwitchChatHandler(this, chatCommands);
 
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
@@ -105,6 +108,7 @@ public class EventSubWebsocket
         };
         return new Uri($"wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={keepAlive}");
     }
+
 
     public async Task Connect()
     {

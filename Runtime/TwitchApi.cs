@@ -1,6 +1,5 @@
 ﻿using System.Linq;
 using System.Net.Http;
-using System.Net.Http.Headers;
 using System.Text;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -8,6 +7,7 @@ using UnityEngine;
 
 public class TwitchApi
 {
+    private readonly HttpClient _client = new();
     private readonly string _clientId;
     private readonly TokenResponse _tokenResponse;
     private string _broadcasterId;
@@ -47,27 +47,28 @@ public class TwitchApi
         return (Id: _broadcasterId, Name: _broadcasterName);
     }
 
+
     public HttpResponseMessage SubscribeToEvents(object subscriptionData)
     {
-        using var client = new HttpClient();
-        var jsonBody = JsonConvert.SerializeObject(subscriptionData);
-        var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        client.DefaultRequestHeaders.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
-        client.DefaultRequestHeaders.Add("Client-Id", _clientId);
-
         var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
-        var response = client.PostAsync(uri, content).Result;
-        return response;
+        var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        request.Headers.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
+        request.Headers.Add("Client-Id", _clientId);
+
+        var jsonBody = JsonConvert.SerializeObject(subscriptionData);
+        request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+
+        return _client.SendAsync(request).Result;
     }
 
 
     public void SendChatMessage(string chatMessage)
     {
-        using var client = new HttpClient();
         //TODO to send msg's as bot, we need a token for bot...
-        client.DefaultRequestHeaders.Add("Authorization", "Bearer " + _tokenResponse.AccessToken);
-        client.DefaultRequestHeaders.Add("Client-Id", _clientId);
+        var uri = "https://api.twitch.tv/helix/chat/messages";
+        var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        request.Headers.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
+        request.Headers.Add("Client-Id", _clientId);
 
         var payload = new
         {
@@ -76,8 +77,8 @@ public class TwitchApi
             message = chatMessage
         };
 
-        var content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-        var response = client.PostAsync("https://api.twitch.tv/helix/chat/messages", content).Result;
+        request.Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+        var response = _client.SendAsync(request).Result;
 
         if (response.IsSuccessStatusCode)
         {
@@ -112,14 +113,29 @@ public class TwitchApi
         return GetUsers(_tokenResponse, _clientId, query);
     }
 
+    public static bool ValidateToken(TokenResponse tokenResponse)
+    {
+        // Set Authorization header with Bearer token
+        var uri = "https://id.twitch.tv/oauth2/validate";
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+        // Send the GET request
+        using var client = new HttpClient();
+        var response = client.SendAsync(request).Result;
+        // If status code is 200, the token is valid
+        return response.IsSuccessStatusCode;
+    }
+
     private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
     {
+        var uri = "https://api.twitch.tv/helix/users";
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Add("Authorization", $"Bearer {token.AccessToken}");
+        request.Headers.Add("Client-Id", clientId);
+
+        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
-        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-        client.DefaultRequestHeaders.Add("Client-Id", clientId);
-        var url = "https://api.twitch.tv/helix/users";
-        if (!string.IsNullOrEmpty(query)) url += $"?{query}";
-        var response = client.GetAsync(url).Result;
+        var response = client.GetAsync(uri).Result;
         return response.Content.ReadAsStringAsync().Result;
     }
 }
