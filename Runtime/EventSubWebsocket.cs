@@ -109,7 +109,7 @@ public class EventSubWebsocket
     public async Task Connect()
     {
         Debug.Log("Getting User DeviceToken");
-        _tokenResponse = _authenticator.RunDeviceFlowAsync();
+        _tokenResponse = await _authenticator.RunDeviceFlowAsync();
 
         Api = new TwitchApi(_clientId, _tokenResponse);
         (_broadcasterId, _broadcasterName) = Api.GetBroadcaster();
@@ -228,11 +228,11 @@ public class EventSubWebsocket
         _sessionId = $"{sessionId}";
         //! 10 sec limit to respond
         foreach (var scope in _eventHandlers.Keys)
-            SubscribeEvent(scope);
+            _ = SubscribeEvent(scope);
         OnConnected?.Invoke(true, _broadcasterName);
     }
 
-    private void SubscribeEvent(TwitchEventSubScopes.EScope scope)
+    private async Task SubscribeEvent(TwitchEventSubScopes.EScope scope)
     {
         var subscriptionData = GetSubscriptionCondition(scope);
         var response = Api.SubscribeToEvents(subscriptionData);
@@ -244,11 +244,11 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            _tokenResponse = _authenticator.Handle401(_clientId, _tokenResponse);
+            _tokenResponse = await _authenticator.Handle401(_clientId, _tokenResponse);
             if (_tokenResponse == null)
                 throw new Exception("Failed to refresh token");
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
-            SubscribeEvent(scope);
+            await SubscribeEvent(scope);
         }
         else if (!isSuccess)
         {

@@ -25,7 +25,7 @@ public class TwitchAuthenticator
         _scopes = scopes;
     }
 
-    private TokenResponse PollForTokens(DeviceCodeResponse deviceResp, CancellationToken ct)
+    private async Task<TokenResponse> PollForTokens(DeviceCodeResponse deviceResp, CancellationToken ct)
     {
         var payload = new MultipartFormDataContent
         {
@@ -43,7 +43,7 @@ public class TwitchAuthenticator
         {
             if (stopwatch.ElapsedMilliseconds > timeOut)
                 break;
-            var resp = _client.PostAsync(url, payload, ct).Result;
+            var resp = await _client.PostAsync(url, payload, ct);
             if (resp.IsSuccessStatusCode)
             {
                 var json = resp.Content.ReadAsStringAsync().Result;
@@ -52,21 +52,21 @@ public class TwitchAuthenticator
                 return tokenResponse;
             }
 
-            Task.Delay(delay, ct);
+            await Task.Delay(delay, ct);
         }
 
         return null;
     }
 
-    public TokenResponse RunDeviceFlowAsync(CancellationToken ct = default)
+    public async Task<TokenResponse> RunDeviceFlowAsync(CancellationToken ct = default)
     {
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
         if (tokenResponse != null) return tokenResponse;
-        return DeviceFlow(ct);
+        return await DeviceFlow(ct);
     }
 
-    private TokenResponse DeviceFlow(CancellationToken ct = default)
+    private async Task<TokenResponse> DeviceFlow(CancellationToken ct = default)
     {
         var deviceCodeResponse = RequestDeviceCode(ct);
         if (deviceCodeResponse == null) return null;
@@ -75,7 +75,7 @@ public class TwitchAuthenticator
             FileName = deviceCodeResponse.VerificationUri,
             UseShellExecute = true
         });
-        return PollForTokens(deviceCodeResponse, ct);
+        return await PollForTokens(deviceCodeResponse, ct);
     }
 
 
@@ -95,14 +95,14 @@ public class TwitchAuthenticator
         return JsonConvert.DeserializeObject<DeviceCodeResponse>(result);
     }
 
-    public TokenResponse Handle401(string clientId, TokenResponse tokenResponse)
+    public async Task<TokenResponse> Handle401(string clientId, TokenResponse tokenResponse)
     {
         Debug.Log("Attempting to refresh token");
         var newToken = new TokenResponse();
         var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId);
         if (result == null)
         {
-            newToken = DeviceFlow();
+            newToken = await DeviceFlow();
         }
         else
         {
