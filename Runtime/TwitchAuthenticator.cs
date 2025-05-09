@@ -29,7 +29,7 @@ public class TwitchAuthenticator
     {
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
-        // TODO validate token
+        // validate token
         var isValid = TwitchApi.ValidateToken(tokenResponse);
         if (tokenResponse != null && isValid) return tokenResponse;
         return await DeviceFlow(ct);

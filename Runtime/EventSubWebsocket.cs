@@ -132,7 +132,7 @@ public class EventSubWebsocket
         _tokenResponse = await _authenticator.RunDeviceFlowAsync();
 
         Api = new TwitchApi(_clientId, _tokenResponse);
-        (_broadcasterId, _broadcasterName) = Api.GetBroadcaster();
+        (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse);
         Debug.Log($"Using BroadcasterId {_broadcasterId}");
 
         var uri = CreateUri(_keepAlive);

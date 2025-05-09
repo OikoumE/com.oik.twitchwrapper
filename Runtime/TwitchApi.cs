@@ -24,6 +24,7 @@ public class TwitchApi
     {
         var result = GetUsers();
         (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
+        Debug.Log($"Setting Broadcaster: id {_broadcasterId}, name {_broadcasterName}");
     }
 
     private static (string Id, string Name) ParseBroadcasterUser(string result)
@@ -124,7 +125,9 @@ public class TwitchApi
         using var client = new HttpClient();
         var response = client.SendAsync(request).Result;
         // If status code is 200, the token is valid
-        return response.IsSuccessStatusCode;
+        var isValid = response.IsSuccessStatusCode;
+        Debug.Log($"Token is valid: {isValid}");
+        return isValid;
     }
 
     private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
