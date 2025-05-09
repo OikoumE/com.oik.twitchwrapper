@@ -97,6 +97,8 @@ public class EventSubWebsocket
             /* swallow if socket is already closing/closed */
         }
 
+        OnClose = null;
+        OnConnected = null;
         Debug.Log($"Websocket closed {_ws?.State}");
     }
 
@@ -112,7 +114,12 @@ public class EventSubWebsocket
         return new Uri($"wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={keepAlive}");
     }
 
-    public async Task Connect()
+    public void Connect()
+    {
+        _ = ConnectAsync();
+    }
+
+    public async Task ConnectAsync()
     {
         if (_isConnecting)
         {
