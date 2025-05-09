@@ -15,9 +15,9 @@ public class TwitchChatHandler
     public TwitchChatHandler(EventSubWebsocket client,
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands, string[] ignoreNames = null)
     {
+        Debug.Log("Creating chat handler");
         if (ignoreNames != null)
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
-
         _client = client;
         _commands = commands;
         SetupCommands();
@@ -68,13 +68,17 @@ public class TwitchChatHandler
     {
         var displayName = chatCommand.ChatterUserName;
         if (_ignoreNames != null && _ignoreNames.Contains(displayName))
+        {
+            Debug.Log($"Ignoring {displayName}");
             return;
+        }
 
         var commandText = chatCommand.CommandText;
-        foreach (var (command, action) in _commands)
+        foreach (var (command, action) in _defaultCommands)
             if (command.Command == commandText || command.Aliases.Contains(commandText))
                 action.Invoke(chatCommand, _client);
-        foreach (var (command, action) in _defaultCommands)
+        if (_commands is not { Count: > 0 }) return;
+        foreach (var (command, action) in _commands)
             if (command.Command == commandText || command.Aliases.Contains(commandText))
                 action.Invoke(chatCommand, _client);
     }

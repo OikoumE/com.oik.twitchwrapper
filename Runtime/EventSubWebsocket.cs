@@ -70,8 +70,9 @@ public class EventSubWebsocket
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
 
-        if (chatCommands != null || eventHandlers.ContainsKey(TwitchEventSubScopes.EScope.ChannelChatMessage))
-            ChatHandler = new TwitchChatHandler(this, chatCommands);
+
+        ChatHandler = new TwitchChatHandler(this, chatCommands);
+
 
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
