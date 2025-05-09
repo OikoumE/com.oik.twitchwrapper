@@ -69,13 +69,18 @@ public class EventSubWebsocket
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
-
-
-        ChatHandler = new TwitchChatHandler(this, chatCommands);
-
-
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
+        SetupChatHandler(chatCommands);
+    }
+
+    private void SetupChatHandler(Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands)
+    {
+        ChatHandler = new TwitchChatHandler(this, chatCommands);
+        var chatScope = TwitchEventSubScopes.EScope.ChannelChatMessage;
+        _eventHandlers.TryGetValue(chatScope, out var handler);
+        handler += ChatHandler.OnChatMessage;
+        _eventHandlers[chatScope] = handler;
     }
 
     public void RevokeToken()
