@@ -82,19 +82,20 @@ public class EventSubWebsocket
 
     public void Close()
     {
-        Api.SendChatMessage("Disconnecting from Websocket!");
+        if (_cts?.IsCancellationRequested ?? true) return;
+        Api?.SendChatMessage("Disconnecting from Websocket!");
         _cts.Cancel();
         OnClose?.Invoke();
         try
         {
-            _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token).Wait();
+            _ws?.CloseAsync(WebSocketCloseStatus.NormalClosure, "Closing", _cts.Token).Wait();
         }
         catch (Exception)
         {
             /* swallow if socket is already closing/closed */
         }
 
-        Debug.Log($"Websocket closed {_ws.State}");
+        Debug.Log($"Websocket closed {_ws?.State}");
     }
 
     private Uri CreateUri(int keepAlive)
