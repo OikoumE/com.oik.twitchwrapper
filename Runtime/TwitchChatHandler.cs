@@ -15,7 +15,7 @@ public class TwitchChatHandler
     public TwitchChatHandler(EventSubWebsocket client,
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands, string[] ignoreNames = null)
     {
-        Debug.Log("Creating chat handler");
+        Debug.Log("Initializing TwitchChatHandler");
         if (ignoreNames != null)
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
         _client = client;

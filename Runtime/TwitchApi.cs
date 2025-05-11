@@ -17,6 +17,7 @@ public class TwitchApi
 
     public TwitchApi(string clientId, TokenResponse tokenResponse, CancellationTokenSource cts)
     {
+        Debug.Log("Initializing TwitchApi");
         _clientId = clientId;
         _tokenResponse = tokenResponse;
         _cts = cts;

@@ -22,6 +22,7 @@ public class TwitchAuthenticator
 
     public TwitchAuthenticator(string clientId, string scopes, CancellationTokenSource cts)
     {
+        Debug.Log("Initializing TwitchAuthenticator");
         _clientId = clientId;
         _scopes = scopes;
         _cts = cts;
