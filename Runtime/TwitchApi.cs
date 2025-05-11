@@ -1,28 +1,31 @@
 ﻿using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 public class TwitchApi
 {
+    private static CancellationTokenSource _cts;
     private readonly HttpClient _client = new();
     private readonly string _clientId;
     private readonly TokenResponse _tokenResponse;
     private string _broadcasterId;
     private string _broadcasterName;
 
-    public TwitchApi(string clientId, TokenResponse tokenResponse)
+    public TwitchApi(string clientId, TokenResponse tokenResponse, CancellationTokenSource cts)
     {
         _clientId = clientId;
         _tokenResponse = tokenResponse;
+        _cts = cts;
         SetBroadcaster();
     }
 
     private void SetBroadcaster()
     {
-        var result = GetUsers();
+        var result = GetUsers(_cts.Token);
         (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
         Debug.Log($"Setting Broadcaster id: {_broadcasterId}, name: {_broadcasterName}");
     }
@@ -37,9 +40,9 @@ public class TwitchApi
     }
 
     public static (string Id, string Name) GetBroadcaster(string clientId,
-        TokenResponse tokenResponse)
+        TokenResponse tokenResponse, CancellationToken ct)
     {
-        var result = GetUsers(tokenResponse, clientId);
+        var result = GetUsers(tokenResponse, ct, clientId);
         return ParseBroadcasterUser(result);
     }
 
@@ -59,7 +62,7 @@ public class TwitchApi
         var jsonBody = JsonConvert.SerializeObject(subscriptionData);
         request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
 
-        return _client.SendAsync(request).Result;
+        return _client.SendAsync(request, _cts.Token).Result;
     }
 
 
@@ -79,7 +82,7 @@ public class TwitchApi
         };
 
         request.Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-        var response = _client.SendAsync(request).Result;
+        var response = _client.SendAsync(request, _cts.Token).Result;
 
         if (response.IsSuccessStatusCode)
         {
@@ -93,25 +96,25 @@ public class TwitchApi
         }
     }
 
-    public string GetUsers(int[] ids)
+    public string GetUsers(CancellationToken ct, int[] ids)
     {
         var query = "";
         if (ids is { Length: > 0 })
             query = string.Join("&", ids[..99].Select(i => $"id={i}"));
-        return GetUsers(query);
+        return GetUsers(ct, query);
     }
 
-    public string GetUsers(string[] logins)
+    public string GetUsers(CancellationToken ct, string[] logins)
     {
         var query = "";
         if (logins is { Length: > 0 })
             query = string.Join("&", logins[..99].Select(l => $"login={l}"));
-        return GetUsers(query);
+        return GetUsers(ct, query);
     }
 
-    private string GetUsers(string query = "")
+    private string GetUsers(CancellationToken ct, string query = "")
     {
-        return GetUsers(_tokenResponse, _clientId, query);
+        return GetUsers(_tokenResponse, ct, _clientId, query);
     }
 
     public static bool ValidateToken(TokenResponse tokenResponse)
@@ -123,14 +126,14 @@ public class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
-        var response = client.SendAsync(request).Result;
+        var response = client.SendAsync(request, _cts.Token).Result;
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
         Debug.Log($"Token is valid: {isValid}");
         return isValid;
     }
 
-    private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
+    private static string GetUsers(TokenResponse token, CancellationToken ct, string clientId = "", string query = "")
     {
         var uri = "https://api.twitch.tv/helix/users";
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -139,7 +142,7 @@ public class TwitchApi
 
         if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
-        var response = client.SendAsync(request).Result;
+        var response = client.SendAsync(request, ct).Result;
         return response.Content.ReadAsStringAsync().Result;
     }
 }

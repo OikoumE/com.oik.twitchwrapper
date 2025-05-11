@@ -39,10 +39,7 @@ public static class TokenWrapper
     {
         var path = GetPath();
         if (!File.Exists(path))
-        {
-            Debug.LogError("No AccessToken stored");
             return null;
-        }
 
         Debug.Log("Loaded AccessToken from: " + path);
         var token = new TokenResponse();

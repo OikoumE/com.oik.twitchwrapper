@@ -39,6 +39,8 @@ public class EventSubWebsocket
     private bool _isConnecting;
     private string _sessionId;
     private float _timeOfLastKeepAlive;
+
+    private float _timeoutSeconds;
     private TokenResponse _tokenResponse;
 
     private Dictionary<int, string> _websocketCloseStatusCode = new()
@@ -65,12 +67,11 @@ public class EventSubWebsocket
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
         int keepAlive = 30)
     {
-        //TODO if not valid token, refresh token
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
-        _authenticator = new TwitchAuthenticator(clientId, apiScopes);
+        _authenticator = new TwitchAuthenticator(clientId, apiScopes, _cts);
         SetupChatHandler(chatCommands);
     }
 
@@ -127,13 +128,14 @@ public class EventSubWebsocket
         return new Uri($"wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={keepAlive}");
     }
 
-    public void Connect()
+    public void Connect(float timeoutSeconds)
     {
-        _ = ConnectAsync();
+        _ = ConnectAsync(timeoutSeconds);
     }
 
-    public async Task ConnectAsync()
+    public async Task ConnectAsync(float timeoutSeconds)
     {
+        _timeoutSeconds = timeoutSeconds;
         if (_isConnecting)
         {
             Debug.LogError("Already connecting");
@@ -141,17 +143,18 @@ public class EventSubWebsocket
         }
 
         _isConnecting = true;
-        Debug.Log("Getting User DeviceToken");
-        _tokenResponse = await _authenticator.RunDeviceFlowAsync();
-
-        Api = new TwitchApi(_clientId, _tokenResponse);
-        (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse);
-
-        var uri = CreateUri(_keepAlive);
         _cts?.Dispose();
         _cts = new CancellationTokenSource();
         _ws?.Dispose();
         _ws = new ClientWebSocket();
+
+        Debug.Log("Getting User DeviceToken");
+        _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
+
+        Api = new TwitchApi(_clientId, _tokenResponse, _cts);
+        (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse, _cts.Token);
+
+        var uri = CreateUri(_keepAlive);
         await _ws.ConnectAsync(uri, _cts.Token);
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
@@ -278,7 +281,7 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            _tokenResponse = await _authenticator.Handle401(_clientId, _tokenResponse);
+            _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
             if (_tokenResponse == null)
                 throw new Exception("Failed to refresh token");
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
