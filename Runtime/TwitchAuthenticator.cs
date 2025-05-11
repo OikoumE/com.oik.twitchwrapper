@@ -39,6 +39,7 @@ public class TwitchAuthenticator
             return await DeviceFlow(timeoutSeconds);
         }
 
+        Debug.Log("FUCKING SHIT!");
         // validate token
         var isValid = await TwitchApi.ValidateToken(tokenResponse, _cts.Token);
         Debug.Log($"TokenResponse valid: <color={(isValid ? "green" : "red")}>{isValid}</color>");
@@ -71,7 +72,7 @@ public class TwitchAuthenticator
             { new StringContent(_clientId), "client_id" },
             { new StringContent(_scopes), "scopes" }
         };
-
+        Debug.Log("Requesting device code");
         var response = _client.PostAsync("https://id.twitch.tv/oauth2/device", content, _cts.Token).Result;
         if (!response.IsSuccessStatusCode) return null;
         //5. deserialize
