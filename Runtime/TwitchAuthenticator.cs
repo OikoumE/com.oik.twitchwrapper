@@ -17,8 +17,8 @@ public class TwitchAuthenticator
 
     private readonly HttpClient _client = new();
     private readonly string _clientId;
-    private readonly string _scopes;
     private readonly CancellationTokenSource _cts;
+    private readonly string _scopes;
 
     public TwitchAuthenticator(string clientId, string scopes, CancellationTokenSource cts)
     {
@@ -160,6 +160,7 @@ public class TwitchAuthenticator
 
     public void RevokeToken(TokenResponse token)
     {
+        if (token == null) return;
         using var client = new HttpClient();
         var values = HttpUtility.ParseQueryString(string.Empty);
         values["client_id"] = _clientId;
