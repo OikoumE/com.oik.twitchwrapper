@@ -8,12 +8,12 @@ using UnityEngine;
 
 public class TwitchApi
 {
-    private static CancellationTokenSource _cts;
     private readonly HttpClient _client = new();
     private readonly string _clientId;
     private readonly TokenResponse _tokenResponse;
     private string _broadcasterId;
     private string _broadcasterName;
+    private readonly CancellationTokenSource _cts;
 
     public TwitchApi(string clientId, TokenResponse tokenResponse, CancellationTokenSource cts)
     {
@@ -118,7 +118,7 @@ public class TwitchApi
         return GetUsers(_tokenResponse, ct, _clientId, query);
     }
 
-    public static bool ValidateToken(TokenResponse tokenResponse)
+    public static bool ValidateToken(TokenResponse tokenResponse, CancellationToken ct)
     {
         if (tokenResponse == null)
         {
@@ -133,7 +133,7 @@ public class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
-        var response = client.SendAsync(request, _cts.Token).Result;
+        var response = client.SendAsync(request, ct).Result;
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
         Debug.Log($"Token is valid: {isValid}");

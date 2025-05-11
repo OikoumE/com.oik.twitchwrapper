@@ -67,6 +67,7 @@ public class EventSubWebsocket
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
         int keepAlive = 30)
     {
+        Debug.Log("Initializing EventSubWebsocket");
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
@@ -141,6 +142,8 @@ public class EventSubWebsocket
             Debug.LogError("Already connecting");
             return;
         }
+
+        Debug.Log("Connecting EventSubWebsocket");
 
         _isConnecting = true;
         _cts?.Dispose();

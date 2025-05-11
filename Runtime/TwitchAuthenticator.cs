@@ -40,7 +40,7 @@ public class TwitchAuthenticator
         }
 
         // validate token
-        var isValid = TwitchApi.ValidateToken(tokenResponse);
+        var isValid = TwitchApi.ValidateToken(tokenResponse, _cts.Token);
         Debug.Log($"TokenResponse valid: <color={(isValid ? "green" : "red")}>{isValid}</color>");
         // if token valid
         if (isValid) return tokenResponse;
