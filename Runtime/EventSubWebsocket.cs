@@ -154,8 +154,7 @@ public class EventSubWebsocket
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
         if (_tokenResponse == null)
-            Debug.LogError("Error when Authorizing");
-
+            throw new Exception("Error when Authorizing");
 
         Api = new TwitchApi(_clientId, _tokenResponse, _cts);
         (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse, _cts.Token);

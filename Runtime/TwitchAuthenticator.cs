@@ -97,7 +97,7 @@ public class TwitchAuthenticator
         Debug.Log($"Waiting for token: timeout after {timeoutSeconds}sec");
         while (!ct.IsCancellationRequested)
         {
-            if (stopwatch.Elapsed.Seconds > timeoutSeconds)
+            if (stopwatch.ElapsedMilliseconds > timeoutSeconds * 1000)
             {
                 Debug.LogError("Auth timed out!");
                 break;
@@ -122,7 +122,6 @@ public class TwitchAuthenticator
     public async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId, TokenResponse tokenResponse,
         CancellationToken ct)
     {
-        Debug.Log("Attempting to refresh token");
         var newToken = new TokenResponse();
         var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId, ct);
         if (result == null)
@@ -146,6 +145,7 @@ public class TwitchAuthenticator
     {
         // refresh token
         // https://dev.twitch.tv/docs/authentication/refresh-tokens/
+        Debug.Log("<color=blue>Attempting</color> to refresh token");
         using var client = new HttpClient();
         var values = new Dictionary<string, string>
         {
@@ -155,7 +155,9 @@ public class TwitchAuthenticator
         };
         var content = new FormUrlEncodedContent(values);
         var response = client.PostAsync("https://id.twitch.tv/oauth2/token", content, ct).Result;
-        if (!response.IsSuccessStatusCode) return null;
+        var success = response.IsSuccessStatusCode;
+        Debug.Log($"Refresh token result: {success}");
+        if (!success) return null;
         var json = response.Content.ReadAsStringAsync().Result;
         return json; // contains new access and refresh tokens
     }
