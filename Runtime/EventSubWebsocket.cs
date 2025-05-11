@@ -151,6 +151,7 @@ public class EventSubWebsocket
         _ws?.Dispose();
         _ws = new ClientWebSocket();
 
+
         Debug.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
         if (_tokenResponse == null)
