@@ -72,7 +72,7 @@ public class EventSubWebsocket
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
-        _authenticator = new TwitchAuthenticator(clientId, apiScopes, _cts);
+        _authenticator = new TwitchAuthenticator(clientId, apiScopes);
         SetupChatHandler(chatCommands);
     }
 
@@ -92,7 +92,7 @@ public class EventSubWebsocket
 
     public void RevokeToken()
     {
-        _authenticator.RevokeToken(_tokenResponse);
+        _authenticator.RevokeToken(_tokenResponse, _cts.Token);
     }
 
     public void Close()
@@ -152,7 +152,7 @@ public class EventSubWebsocket
         _ws = new ClientWebSocket();
 
         Debug.Log("Getting User DeviceToken");
-        _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
+        _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
         if (_tokenResponse == null)
             Debug.LogError("Error when Authorizing");
 
@@ -287,7 +287,7 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
+            _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
             if (_tokenResponse == null)
                 throw new Exception("Failed to refresh token");
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");

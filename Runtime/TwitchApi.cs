@@ -121,14 +121,11 @@ public class TwitchApi
 
     public static async Task<bool> ValidateToken(TokenResponse tokenResponse, CancellationToken ct)
     {
-        Debug.Log("Validating token");
         if (tokenResponse == null)
         {
             Debug.LogWarning("Invalid token!");
             return false;
         }
-
-        Debug.Log("Validating token2");
 
         // Set Authorization header with Bearer token
         var uri = "https://id.twitch.tv/oauth2/validate";
