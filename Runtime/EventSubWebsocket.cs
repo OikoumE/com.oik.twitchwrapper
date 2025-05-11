@@ -57,7 +57,6 @@ public class EventSubWebsocket
 
     public TwitchApi Api;
     public TwitchChatHandler ChatHandler;
-
     public Action OnClose;
     public Action<bool, string> OnConnected;
 
@@ -66,6 +65,7 @@ public class EventSubWebsocket
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
         int keepAlive = 30)
     {
+        //TODO if not valid token, refresh token
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
