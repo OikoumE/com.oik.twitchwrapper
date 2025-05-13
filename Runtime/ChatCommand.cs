@@ -1,5 +1,8 @@
-﻿public class ChatCommand
+﻿using System;
+
+public class ChatCommand
 {
+    private readonly DateTime _timestamp;
     public readonly string ChatterUserId;
     public readonly string ChatterUserLogin;
     public readonly string ChatterUserName;
@@ -16,6 +19,7 @@
         ChatterUserId = msg.ChatterUserId;
         ChatterUserLogin = msg.ChatterUserLogin;
         ChatterUserName = msg.ChatterUserName;
+        _timestamp = DateTime.Now;
     }
 
     public (string identifier, string cmd, string msg, int userID, string userName, string displayName)
@@ -27,5 +31,10 @@
             int.Parse(ChatterUserId),
             ChatterUserLogin,
             ChatterUserName);
+    }
+
+    public string Timestamp(string format = "HH:mm:ss")
+    {
+        return _timestamp.ToString(format);
     }
 }
