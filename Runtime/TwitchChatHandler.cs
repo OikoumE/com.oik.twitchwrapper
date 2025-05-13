@@ -28,14 +28,14 @@ public class TwitchChatHandler
         _defaultCommands = new Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>>
         {
             {
-                new CommandString("hello", new[] { "hi" }),
+                new CommandString(new[] { "hello", "hi" }),
                 (c, cx) => cx.Api.SendChatMessage($"Hello {c.ChatterUserName}!")
             },
             {
                 new CommandString("about"),
                 (_, cx) => cx.Api.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
             },
-            { new CommandString("command", new[] { "commands", "cmd", "cmds" }), AvailableCommands }
+            { new CommandString(new[] { "command", "commands", "cmd", "cmds" }), AvailableCommands }
         };
     }
 
@@ -67,7 +67,7 @@ public class TwitchChatHandler
     private void OnChatCommand(ChatCommand chatCommand)
     {
         var displayName = chatCommand.ChatterUserName;
-        if (_ignoreNames != null && _ignoreNames.Contains(displayName))
+        if (_ignoreNames != null && _ignoreNames.Contains(displayName.ToLower()))
         {
             Debug.Log($"Ignoring {displayName}");
             return;
@@ -75,19 +75,18 @@ public class TwitchChatHandler
 
         var commandText = chatCommand.CommandText;
         foreach (var (command, action) in _defaultCommands)
-            if (command.Command == commandText || command.Aliases.Contains(commandText))
+            if (command.Commands.Contains(commandText.ToLower()))
                 action.Invoke(chatCommand, _client);
         if (_commands is not { Count: > 0 }) return;
         foreach (var (command, action) in _commands)
-            if (command.Command == commandText || command.Aliases.Contains(commandText))
+            if (command.Commands.Contains(commandText.ToLower()))
                 action.Invoke(chatCommand, _client);
     }
 
     private void AvailableCommands(ChatCommand _, EventSubWebsocket __)
     {
-        var defaultCommands = _defaultCommands.Keys.Select(x => x.Command).ToArray();
-        var commands = _commands.Keys.Select(x => x.Command).ToArray();
-
+        var defaultCommands = _defaultCommands.Keys.Select(x => string.Join(", ", x.Commands)).ToArray();
+        var commands = _commands.Keys.Select(x => string.Join(", ", x.Commands)).ToArray();
         var reply = string.Join(", ", defaultCommands);
         reply += ", " + string.Join(", ", commands);
         _client.Api.SendChatMessage(reply);

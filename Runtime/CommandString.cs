@@ -1,19 +1,21 @@
-﻿using System;
-using System.Linq;
+﻿using System.Linq;
 
 public class CommandString
 {
-    public string[] Aliases;
-    public string Command;
+    public string[] Commands;
 
-    public CommandString(string command, string[] aliases = null)
+    public CommandString(string command)
     {
-        Command = command;
-        Aliases = aliases ?? Array.Empty<string>();
+        Commands = new[] { command };
+    }
+
+    public CommandString(string[] commands)
+    {
+        Commands = commands;
     }
 
     public bool IsTarget(string command)
     {
-        return Command == command || Aliases.Contains(command);
+        return Commands.Contains(command);
     }
 }
