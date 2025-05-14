@@ -102,7 +102,8 @@ public class EventSubWebsocket
     {
         if (_cts?.IsCancellationRequested ?? true) return;
 #if !UNITY_EDITOR
-        Api?.SendChatMessage("Disconnecting from Websocket!");
+        if (_ws?.State==WebSocketState.Open)
+            Api?.SendChatMessage("Disconnecting from Websocket!");
 #endif
         _cts.Cancel();
         OnClose?.Invoke();
@@ -117,6 +118,7 @@ public class EventSubWebsocket
 
         OnClose = null;
         OnConnected = null;
+
         Debug.Log($"Websocket closed {_ws?.State}");
     }
 
@@ -190,31 +192,45 @@ public class EventSubWebsocket
     {
         Debug.Log("<color=green>Listening</color> to messages");
         var buffer = new byte[4096];
-        try
-        {
-            while (_ws.State == WebSocketState.Open && _cts.Token.IsCancellationRequested == false)
+        while (_ws.State == WebSocketState.Open && _cts.Token.IsCancellationRequested == false)
+            try
             {
                 var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                 var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                var json = JObject.Parse(msg);
-                HandleIncomingMessage(json);
+                HandleIncomingMessage(msg);
             }
-        }
-        catch (OperationCanceledException)
-        {
-            /* expected on cancel */
-        }
-        catch (Exception ex)
-        {
-            Debug.LogError(ex);
-        }
+            catch (OperationCanceledException)
+            {
+                /* expected on cancel */
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError(ex);
+            }
+
 
         Debug.LogWarning($"Socket status: {_ws.State}");
+        if (_ws.State == WebSocketState.CloseReceived)
+            // _websocketCloseStatusCode
+            Debug.LogError($"closeStatus {_ws.CloseStatus} - {_ws.CloseStatusDescription}");
+        //TODO if closeStatus is number use _websocketCloseStatusCode
         OnClose?.Invoke();
     }
 
-    private void HandleIncomingMessage(JObject json)
+    private void HandleIncomingMessage(string msg)
     {
+        JObject json;
+        try
+        {
+            json = JObject.Parse(msg);
+        }
+        catch (Exception e)
+        {
+            Debug.LogError($"ESW : Error when parsing json; original message: {msg}");
+            Console.WriteLine(e);
+            throw;
+        }
+
         var metaData = json["metadata"];
         var messageId = metaData?["message_id"]?.ToString();
         if (_messageIds.Contains(messageId))
