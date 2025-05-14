@@ -13,7 +13,7 @@ public class TwitchChatHandler
     private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _defaultCommands;
 
     public TwitchChatHandler(EventSubWebsocket client,
-        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands, string[] ignoreNames = null)
+        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands, string[] ignoreNames)
     {
         Debug.Log("Initializing TwitchChatHandler");
         if (ignoreNames != null)
