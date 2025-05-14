@@ -133,9 +133,9 @@ public class TwitchAuthenticator
             if (result == null)
                 throw new Exception("Failed to refresh token");
             var json = JObject.Parse(result);
-
             newToken.AccessToken = "" + json["access_token"];
             newToken.RefreshToken = "" + json["refresh_token"];
+            TokenWrapper.SaveToJson(newToken);
         }
 
         return newToken;

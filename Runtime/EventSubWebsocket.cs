@@ -65,6 +65,7 @@ public class EventSubWebsocket
     public EventSubWebsocket(string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
         Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
+        string[] ignoreChatCommandFrom = null,
         int keepAlive = 30)
     {
         Debug.Log("Initializing EventSubWebsocket");
@@ -73,12 +74,14 @@ public class EventSubWebsocket
         _keepAlive = keepAlive;
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
-        SetupChatHandler(chatCommands);
+        SetupChatHandler(chatCommands, ignoreChatCommandFrom);
     }
 
-    private void SetupChatHandler(Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands)
+    private void SetupChatHandler(
+        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands,
+        string[] ignoreChatCommandFrom)
     {
-        ChatHandler = new TwitchChatHandler(this, chatCommands);
+        ChatHandler = new TwitchChatHandler(this, chatCommands, ignoreChatCommandFrom);
         var chatScope = TwitchEventSubScopes.EScope.ChannelChatMessage;
         if (!_eventHandlers.TryGetValue(chatScope, out var handler))
         {

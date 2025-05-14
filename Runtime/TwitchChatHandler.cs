@@ -85,8 +85,8 @@ public class TwitchChatHandler
 
     private void AvailableCommands(ChatCommand _, EventSubWebsocket __)
     {
-        var defaultCommands = _defaultCommands.Keys.Select(x => string.Join(", ", x.Commands)).ToArray();
-        var commands = _commands.Keys.Select(x => string.Join(", ", x.Commands)).ToArray();
+        var defaultCommands = _defaultCommands.Keys.Select(x => x.Commands[0]).ToArray();
+        var commands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
         var reply = string.Join(", ", defaultCommands);
         reply += ", " + string.Join(", ", commands);
         _client.Api.SendChatMessage(reply);
