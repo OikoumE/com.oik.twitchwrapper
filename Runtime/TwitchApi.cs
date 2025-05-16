@@ -106,7 +106,7 @@ public static class TwitchApi
     {
         var query = "";
         if (ids is { Length: > 0 })
-            query = string.Join("&", ids[..99].Select(i => $"id={i}"));
+            query = string.Join("&", ids[..Mathf.Min(ids.Length, 99)].Select(i => $"id={i}"));
         return GetUsers(query);
     }
 
@@ -114,7 +114,7 @@ public static class TwitchApi
     {
         var query = "";
         if (logins is { Length: > 0 })
-            query = string.Join("&", logins[..99].Select(l => $"login={l}"));
+            query = string.Join("&", logins[..Mathf.Min(logins.Length, 99)].Select(l => $"login={l}"));
         return GetUsers(query);
     }
 
@@ -149,11 +149,11 @@ public static class TwitchApi
     private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
     {
         var uri = "https://api.twitch.tv/helix/users";
+        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Add("Authorization", $"Bearer {token.AccessToken}");
         request.Headers.Add("Client-Id", clientId);
 
-        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = client.SendAsync(request, ct).Result;
