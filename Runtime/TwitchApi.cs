@@ -87,7 +87,7 @@ public static class TwitchApi
             Debug.Log("Sent chat message: " + chatMessage);
         }
         // handle 401 // and update token everywhere
-        else if (!EventSubWebsocket.TryHandle401(response).Result)
+        else
         {
             var error = response.Content.ReadAsStringAsync().Result;
             Debug.LogError("Failed to send chat message");
@@ -126,8 +126,6 @@ public static class TwitchApi
         using var client = new HttpClient();
         var response = client.SendAsync(request, ct).Result;
         // handle 401 // and update token everywhere
-        if (!EventSubWebsocket.TryHandle401(response).Result)
-            Debug.LogError("Error getting users");
         return response.Content.ReadAsStringAsync().Result;
     }
 

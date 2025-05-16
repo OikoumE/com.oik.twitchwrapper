@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
-using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -88,7 +87,7 @@ public class EventSubWebsocket
         Dictionary<CommandString, Action<ChatCommand>> chatCommands,
         string[] ignoreChatCommandFrom)
     {
-        ChatHandler = new TwitchChatHandler(this, chatCommands, ignoreChatCommandFrom);
+        ChatHandler = new TwitchChatHandler(chatCommands, ignoreChatCommandFrom);
         var chatScope = TwitchEventSubScopes.EScope.ChannelChatMessage;
         if (!_eventHandlers.TryGetValue(chatScope, out var handler))
         {
@@ -131,13 +130,7 @@ public class EventSubWebsocket
 
     private Uri CreateUri(int keepAlive)
     {
-        keepAlive = keepAlive switch
-        {
-            //keepalive range 10-600
-            < 10 => 10,
-            > 600 => 600,
-            _ => keepAlive
-        };
+        keepAlive = Mathf.Clamp(keepAlive, 10, 600);
         return new Uri($"wss://eventsub.wss.twitch.tv/ws?keepalive_timeout_seconds={keepAlive}");
     }
 
@@ -168,7 +161,6 @@ public class EventSubWebsocket
         _tokenResponse = await TwitchAuthenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
         if (_tokenResponse == null)
             throw new Exception("Error when Authorizing");
-
 
         (_broadcasterId, _broadcasterName) = TwitchApi.Init(_clientId);
 
@@ -225,7 +217,6 @@ public class EventSubWebsocket
         if (_ws.State == WebSocketState.CloseReceived)
             // _websocketCloseStatusCode
             Debug.LogError($"closeStatus {_ws.CloseStatus} - {_ws.CloseStatusDescription}");
-        //TODO if closeStatus is number use _websocketCloseStatusCode
         OnClose?.Invoke();
     }
 
@@ -256,7 +247,7 @@ public class EventSubWebsocket
         switch (type)
         {
             case "session_welcome":
-                HandleWelcome(json);
+                _ = HandleWelcome(json);
                 return;
             case "session_keepalive":
                 HandleKeepAlive(json);
@@ -297,7 +288,7 @@ public class EventSubWebsocket
         // session_keepalive
     }
 
-    private void HandleWelcome(JObject json)
+    private async Task HandleWelcome(JObject json)
     {
         //https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#welcome-message
         var payload = json["payload"];
@@ -307,7 +298,7 @@ public class EventSubWebsocket
         _sessionId = $"{sessionId}";
         //! 10 sec limit to respond
         foreach (var scope in _eventHandlers.Keys)
-            _ = SubscribeEvent(scope);
+            await SubscribeEvent(scope);
         OnConnected?.Invoke(true, _broadcasterName);
     }
 
@@ -323,7 +314,10 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            if (!await TryHandle401(response)) return;
+            _tokenResponse =
+                await TwitchAuthenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
+            if (_tokenResponse == null)
+                throw new Exception("Failed to refresh token");
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
             await SubscribeEvent(scope);
         }
@@ -334,19 +328,43 @@ public class EventSubWebsocket
             Debug.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
         }
     }
-
-    public static async Task<bool> TryHandle401(HttpResponseMessage response)
-    {
-        if (response.StatusCode != (HttpStatusCode)401) return true;
-        // handle expired token
-        Debug.LogError("Expired token, refreshing token");
-        _tokenResponse = await TwitchAuthenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
-        if (_tokenResponse == null)
-            throw new Exception("Failed to refresh token");
-        // save new token
-        TokenWrapper.SaveToJson(_tokenResponse);
-        return true;
-    }
+    //
+    // private async Task SubscribeEvent(TwitchEventSubScopes.EScope scope)
+    // {
+    //     var subscriptionData = GetSubscriptionCondition(scope);
+    //     var response = TwitchApi.SubscribeToEvents(subscriptionData, _clientId);
+    //     var isSuccess = response.IsSuccessStatusCode;
+    //     Debug.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
+    //               $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
+    //               $" status: {(int)response.StatusCode}-{response.StatusCode}");
+    //     if (response.StatusCode == (HttpStatusCode)401)
+    //     {
+    //         // handle expired token
+    //         Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
+    //         if (!await TryHandle401(response)) return;
+    //         Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
+    //         await SubscribeEvent(scope);
+    //     }
+    //     else if (!isSuccess)
+    //     {
+    //         // Handle error
+    //         var responseBody = response.Content.ReadAsStringAsync().Result;
+    //         Debug.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
+    //     }
+    // }
+    //
+    // public static async Task<bool> TryHandle401(HttpResponseMessage response)
+    // {
+    //     if (response.StatusCode != (HttpStatusCode)401) return true;
+    //     // handle expired token
+    //     Debug.LogError("Expired token, refreshing token");
+    //     _tokenResponse = await TwitchAuthenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
+    //     if (_tokenResponse == null)
+    //         throw new Exception("Failed to refresh token");
+    //     // save new token
+    //     TokenWrapper.SaveToJson(_tokenResponse);
+    //     return true;
+    // }
 
     private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
     {

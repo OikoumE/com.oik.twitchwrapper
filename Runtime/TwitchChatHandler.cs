@@ -6,19 +6,16 @@ using UnityEngine;
 
 public class TwitchChatHandler
 {
-    private readonly EventSubWebsocket _client;
     private readonly Dictionary<CommandString, Action<ChatCommand>> _commands;
 
     private readonly string[] _ignoreNames;
     private Dictionary<CommandString, Action<ChatCommand>> _defaultCommands;
 
-    public TwitchChatHandler(EventSubWebsocket client,
-        Dictionary<CommandString, Action<ChatCommand>> commands, string[] ignoreNames)
+    public TwitchChatHandler(Dictionary<CommandString, Action<ChatCommand>> commands, string[] ignoreNames)
     {
         Debug.Log("Initializing TwitchChatHandler");
         if (ignoreNames != null)
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
-        _client = client;
         _commands = commands;
         SetupCommands();
     }

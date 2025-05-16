@@ -46,6 +46,28 @@ public static class TwitchAuthenticator
         return await Handle401(timeoutSeconds, _clientId, tokenResponse, ct);
     }
 
+    public static async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId,
+        TokenResponse tokenResponse,
+        CancellationToken ct)
+    {
+        var newToken = new TokenResponse();
+        var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId, ct);
+        if (string.IsNullOrEmpty(result))
+        {
+            Debug.LogWarning("Failed to refresh token, running DeviceFlow");
+            newToken = await DeviceFlow(timeoutSeconds, ct);
+        }
+        else
+        {
+            var json = JObject.Parse(result);
+            newToken.AccessToken = "" + json["access_token"];
+            newToken.RefreshToken = "" + json["refresh_token"];
+            TokenWrapper.SaveToJson(newToken);
+        }
+
+        return newToken;
+    }
+
     private static async Task<TokenResponse> DeviceFlow(float timeoutSeconds, CancellationToken ct)
     {
         var deviceCodeResponse = RequestDeviceCode(ct);
@@ -119,26 +141,6 @@ public static class TwitchAuthenticator
         return null;
     }
 
-    public static async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId,
-        TokenResponse tokenResponse,
-        CancellationToken ct)
-    {
-        var newToken = new TokenResponse();
-        var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId, ct);
-        if (string.IsNullOrEmpty(result))
-        {
-            Debug.LogWarning("Failed to refresh token, running DeviceFlow");
-            newToken = await DeviceFlow(timeoutSeconds, ct);
-        }
-        else
-        {
-            var json = JObject.Parse(result);
-            newToken.AccessToken = "" + json["access_token"];
-            newToken.RefreshToken = "" + json["refresh_token"];
-        }
-
-        return newToken;
-    }
 
     private static string RefreshAccessToken(string refreshToken, string clientId, CancellationToken ct)
     {
