@@ -7,13 +7,13 @@ using UnityEngine;
 public class TwitchChatHandler
 {
     private readonly EventSubWebsocket _client;
-    private readonly Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _commands;
+    private readonly Dictionary<CommandString, Action<ChatCommand>> _commands;
 
     private readonly string[] _ignoreNames;
-    private Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> _defaultCommands;
+    private Dictionary<CommandString, Action<ChatCommand>> _defaultCommands;
 
     public TwitchChatHandler(EventSubWebsocket client,
-        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> commands, string[] ignoreNames)
+        Dictionary<CommandString, Action<ChatCommand>> commands, string[] ignoreNames)
     {
         Debug.Log("Initializing TwitchChatHandler");
         if (ignoreNames != null)
@@ -25,15 +25,15 @@ public class TwitchChatHandler
 
     private void SetupCommands()
     {
-        _defaultCommands = new Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>>
+        _defaultCommands = new Dictionary<CommandString, Action<ChatCommand>>
         {
             {
                 new CommandString(new[] { "hello", "hi" }),
-                (c, cx) => cx.Api.SendChatMessage($"Hello {c.ChatterUserName}!")
+                c => TwitchApi.SendChatMessage($"Hello {c.ChatterUserName}!")
             },
             {
                 new CommandString("about"),
-                (_, cx) => cx.Api.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
+                _ => TwitchApi.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
             },
             { new CommandString(new[] { "command", "commands", "cmd", "cmds" }), AvailableCommands }
         };
@@ -76,20 +76,20 @@ public class TwitchChatHandler
         var commandText = chatCommand.CommandText;
         foreach (var (command, action) in _defaultCommands)
             if (command.Commands.Contains(commandText.ToLower()))
-                action.Invoke(chatCommand, _client);
+                action.Invoke(chatCommand);
         if (_commands is not { Count: > 0 }) return;
         foreach (var (command, action) in _commands)
             if (command.Commands.Contains(commandText.ToLower()))
-                action.Invoke(chatCommand, _client);
+                action.Invoke(chatCommand);
     }
 
-    private void AvailableCommands(ChatCommand _, EventSubWebsocket __)
+    private void AvailableCommands(ChatCommand _)
     {
         var defaultCommands = _defaultCommands.Keys.Select(x => x.Commands[0]).ToArray();
         var commands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
         var reply = string.Join(", ", defaultCommands);
         reply += ", " + string.Join(", ", commands);
-        _client.Api.SendChatMessage(reply);
+        TwitchApi.SendChatMessage(reply);
     }
 
 

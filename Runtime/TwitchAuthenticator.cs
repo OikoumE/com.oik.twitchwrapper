@@ -26,7 +26,7 @@ public class TwitchAuthenticator
         _scopes = scopes;
     }
 
-    public async Task<TokenResponse> RunDeviceFlowAsync(float timeoutSeconds, CancellationToken ct)
+    public async Task<TokenResponse> RunDeviceFlowAsync(float timeoutSeconds)
     {
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
@@ -34,20 +34,21 @@ public class TwitchAuthenticator
         if (tokenResponse == null)
         {
             Debug.LogError("No AccessToken stored");
-            return await DeviceFlow(timeoutSeconds, ct);
+            return await DeviceFlow(timeoutSeconds);
         }
 
         // validate token
-        var isValid = await TwitchApi.ValidateToken(tokenResponse, ct);
+        var isValid = await TwitchApi.ValidateToken(tokenResponse);
         Debug.Log($"TokenResponse valid: <color={(isValid ? "green" : "red")}>{isValid}</color>");
         // if token valid
         if (isValid) return tokenResponse;
         // if not, refresh token
-        return await Handle401(timeoutSeconds, _clientId, tokenResponse, ct);
+        return await Handle401(timeoutSeconds, _clientId, tokenResponse);
     }
 
-    private async Task<TokenResponse> DeviceFlow(float timeoutSeconds, CancellationToken ct)
+    private async Task<TokenResponse> DeviceFlow(float timeoutSeconds)
     {
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var deviceCodeResponse = RequestDeviceCode(ct);
         if (deviceCodeResponse == null) return null;
 
@@ -119,14 +120,13 @@ public class TwitchAuthenticator
         return null;
     }
 
-    public async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId, TokenResponse tokenResponse,
-        CancellationToken ct)
+    public async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId, TokenResponse tokenResponse)
     {
         var newToken = new TokenResponse();
-        var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId, ct);
+        var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId);
         if (result == null)
         {
-            newToken = await DeviceFlow(timeoutSeconds, ct);
+            newToken = await DeviceFlow(timeoutSeconds);
         }
         else
         {
@@ -141,7 +141,7 @@ public class TwitchAuthenticator
         return newToken;
     }
 
-    private string RefreshAccessToken(string refreshToken, string clientId, CancellationToken ct)
+    private string RefreshAccessToken(string refreshToken, string clientId)
     {
         // refresh token
         // https://dev.twitch.tv/docs/authentication/refresh-tokens/
@@ -154,6 +154,7 @@ public class TwitchAuthenticator
             { "client_id", clientId }
         };
         var content = new FormUrlEncodedContent(values);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = client.PostAsync("https://id.twitch.tv/oauth2/token", content, ct).Result;
         var success = response.IsSuccessStatusCode;
         Debug.Log($"Refresh token result: {success}");

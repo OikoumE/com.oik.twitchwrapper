@@ -1,33 +1,32 @@
 ﻿using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 
-public class TwitchApi
+public static class TwitchApi
 {
-    private readonly HttpClient _client = new();
-    private readonly string _clientId;
-    private readonly CancellationTokenSource _cts;
-    private readonly TokenResponse _tokenResponse;
-    private string _broadcasterId;
-    private string _broadcasterName;
+    private static readonly HttpClient HttpClient = new();
+    private static string _clientId;
+    private static string _broadcasterId;
+    private static string _broadcasterName;
 
-    public TwitchApi(string clientId, TokenResponse tokenResponse, CancellationTokenSource cts)
+    public static void Init(string clientId, TokenResponse tokenResponse, out string broadcasterName,
+        out string broadcasterId)
     {
         Debug.Log("Initializing TwitchApi");
         _clientId = clientId;
-        _tokenResponse = tokenResponse;
-        _cts = cts;
         SetBroadcaster();
+        broadcasterName = _broadcasterName;
+        broadcasterId = _broadcasterId;
     }
 
-    private void SetBroadcaster()
+
+    private static void SetBroadcaster()
     {
-        var result = GetUsers(_cts.Token);
+        var result = GetUsers();
         (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
         Debug.Log($"Setting Broadcaster id: {_broadcasterId}, name: {_broadcasterName}");
     }
@@ -42,38 +41,42 @@ public class TwitchApi
     }
 
     public static (string Id, string Name) GetBroadcaster(string clientId,
-        TokenResponse tokenResponse, CancellationToken ct)
+        TokenResponse tokenResponse)
     {
-        var result = GetUsers(tokenResponse, ct, clientId);
+        var result = GetUsers(tokenResponse, clientId);
         return ParseBroadcasterUser(result);
     }
 
-    public (string Id, string Name) GetBroadcaster()
+    public static (string Id, string Name) GetBroadcaster()
     {
         return (Id: _broadcasterId, Name: _broadcasterName);
     }
 
 
-    public HttpResponseMessage SubscribeToEvents(object subscriptionData)
+    public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
     {
         var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        request.Headers.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
+
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         request.Headers.Add("Client-Id", _clientId);
 
         var jsonBody = JsonConvert.SerializeObject(subscriptionData);
         request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-
-        return _client.SendAsync(request, _cts.Token).Result;
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        return HttpClient.SendAsync(request, ct).Result;
     }
 
 
-    public void SendChatMessage(string chatMessage)
+    public static void SendChatMessage(string chatMessage)
     {
         //TODO to send msg's as bot, we need a token for bot...
         var uri = "https://api.twitch.tv/helix/chat/messages";
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        request.Headers.Add("Authorization", $"Bearer {_tokenResponse.AccessToken}");
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         request.Headers.Add("Client-Id", _clientId);
 
         var payload = new
@@ -84,7 +87,8 @@ public class TwitchApi
         };
 
         request.Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
-        var response = _client.SendAsync(request, _cts.Token).Result;
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
 
         if (response.IsSuccessStatusCode)
         {
@@ -98,28 +102,29 @@ public class TwitchApi
         }
     }
 
-    public string GetUsers(CancellationToken ct, int[] ids)
+    public static string GetUsers(int[] ids)
     {
         var query = "";
         if (ids is { Length: > 0 })
             query = string.Join("&", ids[..99].Select(i => $"id={i}"));
-        return GetUsers(ct, query);
+        return GetUsers(query);
     }
 
-    public string GetUsers(CancellationToken ct, string[] logins)
+    public static string GetUsers(string[] logins)
     {
         var query = "";
         if (logins is { Length: > 0 })
             query = string.Join("&", logins[..99].Select(l => $"login={l}"));
-        return GetUsers(ct, query);
+        return GetUsers(query);
     }
 
-    private string GetUsers(CancellationToken ct, string query = "")
+    private static string GetUsers(string query = "")
     {
-        return GetUsers(_tokenResponse, ct, _clientId, query);
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        return GetUsers(tokenResponse, _clientId, query);
     }
 
-    public static async Task<bool> ValidateToken(TokenResponse tokenResponse, CancellationToken ct)
+    public static async Task<bool> ValidateToken(TokenResponse tokenResponse)
     {
         if (tokenResponse == null)
         {
@@ -133,6 +138,7 @@ public class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = await client.SendAsync(request, ct);
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
@@ -140,7 +146,7 @@ public class TwitchApi
         return isValid;
     }
 
-    private static string GetUsers(TokenResponse token, CancellationToken ct, string clientId = "", string query = "")
+    private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
     {
         var uri = "https://api.twitch.tv/helix/users";
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
@@ -149,6 +155,7 @@ public class TwitchApi
 
         if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = client.SendAsync(request, ct).Result;
         return response.Content.ReadAsStringAsync().Result;
     }
