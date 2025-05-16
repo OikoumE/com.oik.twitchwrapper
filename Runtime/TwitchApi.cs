@@ -95,21 +95,23 @@ public static class TwitchApi
         }
     }
 
-    public static string GetUsers(CancellationToken ct, int[] ids)
+    public static string GetUsers(int[] ids)
     {
         var query = "";
         if (ids is { Length: > 0 })
             query = string.Join("&", ids[..99].Select(i => $"id={i}"));
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         return GetUsers(tokenResponse, ct, query);
     }
 
-    public static string GetUsers(CancellationToken ct, string[] logins)
+    public static string GetUsers(string[] logins)
     {
         var query = "";
         if (logins is { Length: > 0 })
             query = string.Join("&", logins[..99].Select(l => $"login={l}"));
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         return GetUsers(tokenResponse, ct, query);
     }
 
