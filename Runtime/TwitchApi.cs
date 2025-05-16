@@ -1,6 +1,7 @@
 ﻿using System.Linq;
 using System.Net.Http;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -124,7 +125,7 @@ public static class TwitchApi
         return GetUsers(tokenResponse, _clientId, query);
     }
 
-    public static async Task<bool> ValidateToken(TokenResponse tokenResponse)
+    public static async Task<bool> ValidateToken(TokenResponse tokenResponse, CancellationTokenSource ct = null)
     {
         if (tokenResponse == null)
         {
@@ -138,8 +139,8 @@ public static class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
-        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
-        var response = await client.SendAsync(request, ct);
+        ct ??= EventSubWebsocket.GetCancellationTokenSource();
+        var response = await client.SendAsync(request, ct.Token);
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
         Debug.Log($"Token is valid: {isValid}");
