@@ -61,7 +61,7 @@ public class EventSubWebsocket
 
     public EventSubWebsocket(string clientId,
         Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> eventHandlers,
-        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands = null,
+        Dictionary<CommandString, Action<ChatCommand>> chatCommands = null,
         string[] ignoreChatCommandFrom = null,
         int keepAlive = 30)
     {
@@ -85,7 +85,7 @@ public class EventSubWebsocket
     }
 
     private void SetupChatHandler(
-        Dictionary<CommandString, Action<ChatCommand, EventSubWebsocket>> chatCommands,
+        Dictionary<CommandString, Action<ChatCommand>> chatCommands,
         string[] ignoreChatCommandFrom)
     {
         ChatHandler = new TwitchChatHandler(this, chatCommands, ignoreChatCommandFrom);
