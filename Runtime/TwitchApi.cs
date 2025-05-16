@@ -118,11 +118,11 @@ public static class TwitchApi
     private static string GetUsers(TokenResponse token, CancellationToken ct, string clientId = "", string query = "")
     {
         var uri = "https://api.twitch.tv/helix/users";
+        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         var request = new HttpRequestMessage(HttpMethod.Get, uri);
         request.Headers.Add("Authorization", $"Bearer {token.AccessToken}");
         request.Headers.Add("Client-Id", clientId);
 
-        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
         using var client = new HttpClient();
         var response = client.SendAsync(request, ct).Result;
         // handle 401 // and update token everywhere
