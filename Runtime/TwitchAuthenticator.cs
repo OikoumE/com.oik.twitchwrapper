@@ -10,23 +10,23 @@ using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Debug = UnityEngine.Debug;
 
-public class TwitchAuthenticator
+public static class TwitchAuthenticator
 {
     // check/revoke tokens
     //https://barrycarlyon.github.io/twitch_misc/examples/token_checker/
 
-    private readonly HttpClient _client = new();
-    private readonly string _clientId;
-    private readonly string _scopes;
+    private static readonly HttpClient _client = new();
+    private static string _clientId;
+    private static string _scopes;
 
-    public TwitchAuthenticator(string clientId, string scopes)
+    public static void Init(string clientId, string scopes)
     {
         Debug.Log("Initializing TwitchAuthenticator");
         _clientId = clientId;
         _scopes = scopes;
     }
 
-    public async Task<TokenResponse> RunDeviceFlowAsync(float timeoutSeconds, CancellationToken ct)
+    public static async Task<TokenResponse> RunDeviceFlowAsync(float timeoutSeconds, CancellationToken ct)
     {
         //https://dev.twitch.tv/docs/authentication/getting-tokens-oauth/#device-code-grant-flow
         var tokenResponse = TokenWrapper.LoadFromJson();
@@ -46,7 +46,7 @@ public class TwitchAuthenticator
         return await Handle401(timeoutSeconds, _clientId, tokenResponse, ct);
     }
 
-    private async Task<TokenResponse> DeviceFlow(float timeoutSeconds, CancellationToken ct)
+    private static async Task<TokenResponse> DeviceFlow(float timeoutSeconds, CancellationToken ct)
     {
         var deviceCodeResponse = RequestDeviceCode(ct);
         if (deviceCodeResponse == null) return null;
@@ -61,7 +61,7 @@ public class TwitchAuthenticator
         return await PollForTokens(timeoutSeconds, deviceCodeResponse, ct);
     }
 
-    private DeviceCodeResponse RequestDeviceCode(CancellationToken ct)
+    private static DeviceCodeResponse RequestDeviceCode(CancellationToken ct)
     {
         // 1. The first step starts a device authorization grant code flow for your client.
         var content = new MultipartFormDataContent
@@ -77,7 +77,7 @@ public class TwitchAuthenticator
         return JsonConvert.DeserializeObject<DeviceCodeResponse>(result);
     }
 
-    private async Task<TokenResponse> PollForTokens(float timeoutSeconds,
+    private static async Task<TokenResponse> PollForTokens(float timeoutSeconds,
         DeviceCodeResponse deviceResp
         , CancellationToken ct
     )
@@ -119,29 +119,28 @@ public class TwitchAuthenticator
         return null;
     }
 
-    public async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId, TokenResponse tokenResponse,
+    public static async Task<TokenResponse> Handle401(float timeoutSeconds, string clientId,
+        TokenResponse tokenResponse,
         CancellationToken ct)
     {
         var newToken = new TokenResponse();
         var result = RefreshAccessToken(tokenResponse.RefreshToken, clientId, ct);
-        if (result == null)
+        if (string.IsNullOrEmpty(result))
         {
+            Debug.LogWarning("Failed to refresh token, running DeviceFlow");
             newToken = await DeviceFlow(timeoutSeconds, ct);
         }
         else
         {
-            if (result == null)
-                throw new Exception("Failed to refresh token");
             var json = JObject.Parse(result);
             newToken.AccessToken = "" + json["access_token"];
             newToken.RefreshToken = "" + json["refresh_token"];
-            TokenWrapper.SaveToJson(newToken);
         }
 
         return newToken;
     }
 
-    private string RefreshAccessToken(string refreshToken, string clientId, CancellationToken ct)
+    private static string RefreshAccessToken(string refreshToken, string clientId, CancellationToken ct)
     {
         // refresh token
         // https://dev.twitch.tv/docs/authentication/refresh-tokens/
@@ -162,7 +161,7 @@ public class TwitchAuthenticator
         return json; // contains new access and refresh tokens
     }
 
-    public void RevokeToken(TokenResponse token, CancellationToken ct)
+    public static void RevokeToken(TokenResponse token, CancellationToken ct)
     {
         if (token == null) return;
         using var client = new HttpClient();

@@ -29,11 +29,11 @@ public class TwitchChatHandler
         {
             {
                 new CommandString(new[] { "hello", "hi" }),
-                (c, cx) => cx.Api.SendChatMessage($"Hello {c.ChatterUserName}!")
+                (c, cx) => TwitchApi.SendChatMessage($"Hello {c.ChatterUserName}!")
             },
             {
                 new CommandString("about"),
-                (_, cx) => cx.Api.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
+                (_, cx) => TwitchApi.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
             },
             { new CommandString(new[] { "command", "commands", "cmd", "cmds" }), AvailableCommands }
         };
@@ -83,13 +83,13 @@ public class TwitchChatHandler
                 action.Invoke(chatCommand, _client);
     }
 
-    private void AvailableCommands(ChatCommand _, EventSubWebsocket __)
+    private void AvailableCommands(ChatCommand _, EventSubWebsocket cx)
     {
         var defaultCommands = _defaultCommands.Keys.Select(x => x.Commands[0]).ToArray();
         var commands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
         var reply = string.Join(", ", defaultCommands);
         reply += ", " + string.Join(", ", commands);
-        _client.Api.SendChatMessage(reply);
+        TwitchApi.SendChatMessage(reply);
     }
 
 

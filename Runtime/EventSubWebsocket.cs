@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Linq;
 using System.Net;
+using System.Net.Http;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
@@ -26,22 +27,20 @@ using UnityEngine;
 // messages. dont accept message_timestamp older than 600s and unique message_id
 public class EventSubWebsocket
 {
-    private readonly TwitchAuthenticator _authenticator;
-    private readonly string _clientId;
+    private static string _clientId;
+    private static CancellationTokenSource _cts;
+    private static float _timeoutSeconds;
+    private static TokenResponse _tokenResponse;
+
+
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
     private string _broadcasterId;
-
     private string _broadcasterName;
-    private CancellationTokenSource _cts;
-
     private bool _isConnecting;
     private string _sessionId;
     private float _timeOfLastKeepAlive;
-
-    private float _timeoutSeconds;
-    private TokenResponse _tokenResponse;
 
     private Dictionary<int, string> _websocketCloseStatusCode = new()
     {
@@ -56,8 +55,6 @@ public class EventSubWebsocket
     };
 
     private ClientWebSocket _ws;
-
-    public TwitchApi Api;
     public TwitchChatHandler ChatHandler;
     public Action OnClose;
     public Action<bool, string> OnConnected;
@@ -73,8 +70,18 @@ public class EventSubWebsocket
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
-        _authenticator = new TwitchAuthenticator(clientId, apiScopes);
+        TwitchAuthenticator.Init(clientId, apiScopes);
         SetupChatHandler(chatCommands, ignoreChatCommandFrom);
+    }
+
+    public static CancellationTokenSource GetCancellationTokenSource()
+    {
+        return _cts;
+    }
+
+    public static TokenResponse GetTokenResponse()
+    {
+        return _tokenResponse;
     }
 
     private void SetupChatHandler(
@@ -95,7 +102,7 @@ public class EventSubWebsocket
 
     public void RevokeToken()
     {
-        _authenticator.RevokeToken(_tokenResponse, _cts.Token);
+        TwitchAuthenticator.RevokeToken(_tokenResponse, _cts.Token);
     }
 
     public void Close()
@@ -103,7 +110,7 @@ public class EventSubWebsocket
         if (_cts?.IsCancellationRequested ?? true) return;
 #if !UNITY_EDITOR
         if (_ws?.State==WebSocketState.Open)
-            Api?.SendChatMessage("Disconnecting from Websocket!");
+            TwitchApi.SendChatMessage("Disconnecting from Websocket!");
 #endif
         _cts.Cancel();
         OnClose?.Invoke();
@@ -158,12 +165,12 @@ public class EventSubWebsocket
 
 
         Debug.Log("Getting User DeviceToken");
-        _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
+        _tokenResponse = await TwitchAuthenticator.RunDeviceFlowAsync(_timeoutSeconds, _cts.Token);
         if (_tokenResponse == null)
             throw new Exception("Error when Authorizing");
 
-        Api = new TwitchApi(_clientId, _tokenResponse, _cts);
-        (_broadcasterId, _broadcasterName) = TwitchApi.GetBroadcaster(_clientId, _tokenResponse, _cts.Token);
+
+        (_broadcasterId, _broadcasterName) = TwitchApi.Init(_clientId);
 
         var uri = CreateUri(_keepAlive);
         await _ws.ConnectAsync(uri, _cts.Token);
@@ -174,7 +181,7 @@ public class EventSubWebsocket
 #if !UNITY_EDITOR
         try
         {
-            Api?.SendChatMessage("Connected to WebSocket!");
+            TwitchApi.SendChatMessage("Connected to WebSocket!");
         }
         catch (Exception e)
         {
@@ -197,7 +204,12 @@ public class EventSubWebsocket
             {
                 var result = await _ws.ReceiveAsync(new ArraySegment<byte>(buffer), _cts.Token);
                 var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
-                HandleIncomingMessage(msg);
+                if (string.IsNullOrEmpty(msg))
+                    Debug.LogError($"ESW: message is empty; result:{result} MessageType:{result.MessageType}" +
+                                   $"\nCloseStatus:{result.CloseStatus} " +
+                                   $"CloseStatusDescription:{result.CloseStatusDescription}");
+                else
+                    HandleIncomingMessage(msg);
             }
             catch (OperationCanceledException)
             {
@@ -228,7 +240,7 @@ public class EventSubWebsocket
         {
             Debug.LogError($"ESW : Error when parsing json; original message: {msg}");
             Console.WriteLine(e);
-            throw;
+            return;
         }
 
         var metaData = json["metadata"];
@@ -245,13 +257,13 @@ public class EventSubWebsocket
         {
             case "session_welcome":
                 HandleWelcome(json);
-                break;
+                return;
             case "session_keepalive":
                 HandleKeepAlive(json);
-                break;
+                return;
             case "notification":
                 HandleEvent(json);
-                break;
+                return;
         }
     }
 
@@ -260,11 +272,16 @@ public class EventSubWebsocket
         // https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#notification-message
         var payload = json["payload"];
         var eventType = payload?["subscription"]?["type"]?.ToString();
-        // Debug.Log($"<color=yellow>New event</color>: {eventType}");
-        var eEventType = TwitchEventSubScopes.GetScope(eventType);
-        if (!_eventHandlers.TryGetValue(eEventType, out var handler))
+        if (string.IsNullOrEmpty(eventType))
+        {
+            Debug.LogError($"New event <color=red>is null or empty</color>:  {eventType}");
             return;
-        handler?.Invoke(payload as JObject ?? throw new InvalidOperationException());
+        }
+
+        var eEventType = TwitchEventSubScopes.GetScope(eventType);
+        if (!_eventHandlers.TryGetValue(eEventType, out var handler)
+            || payload is not JObject jObject) return;
+        handler?.Invoke(jObject);
     }
 
 
@@ -297,7 +314,7 @@ public class EventSubWebsocket
     private async Task SubscribeEvent(TwitchEventSubScopes.EScope scope)
     {
         var subscriptionData = GetSubscriptionCondition(scope);
-        var response = Api.SubscribeToEvents(subscriptionData);
+        var response = TwitchApi.SubscribeToEvents(subscriptionData, _clientId);
         var isSuccess = response.IsSuccessStatusCode;
         Debug.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
                   $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
@@ -306,9 +323,7 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
-            if (_tokenResponse == null)
-                throw new Exception("Failed to refresh token");
+            if (!await TryHandle401(response)) return;
             Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
             await SubscribeEvent(scope);
         }
@@ -318,6 +333,19 @@ public class EventSubWebsocket
             var responseBody = response.Content.ReadAsStringAsync().Result;
             Debug.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
         }
+    }
+
+    public static async Task<bool> TryHandle401(HttpResponseMessage response)
+    {
+        if (response.StatusCode != (HttpStatusCode)401) return true;
+        // handle expired token
+        Debug.LogError("Expired token, refreshing token");
+        _tokenResponse = await TwitchAuthenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse, _cts.Token);
+        if (_tokenResponse == null)
+            throw new Exception("Failed to refresh token");
+        // save new token
+        TokenWrapper.SaveToJson(_tokenResponse);
+        return true;
     }
 
     private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
