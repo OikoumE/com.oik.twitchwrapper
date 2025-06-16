@@ -229,11 +229,17 @@ public class EventSubWebsocket
         JObject json;
         try
         {
+            if (string.IsNullOrEmpty(msg))
+            {
+                Debug.Log("empty msg received. why? idfk!");
+                return;
+            }
+
             json = JObject.Parse(msg);
         }
         catch (Exception e)
         {
-            Debug.LogError($"ESW : Error when parsing json; original message: {msg}");
+            Debug.LogError($"EventSubWebSocket : Error when parsing json; original message: {msg}");
             Console.WriteLine(e);
             throw;
         }

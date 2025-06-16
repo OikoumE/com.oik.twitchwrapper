@@ -139,7 +139,8 @@ public static class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
-        ct ??= EventSubWebsocket.GetCancellationTokenSource();
+        if (ct == null)
+        ct = EventSubWebsocket.GetCancellationTokenSource();
         var response = await client.SendAsync(request, ct.Token);
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
