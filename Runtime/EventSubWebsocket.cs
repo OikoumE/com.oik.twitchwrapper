@@ -152,15 +152,11 @@ public class EventSubWebsocket
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
         if (_tokenResponse == null)
             throw new Exception("Error when Authorizing");
+        var uri = PrepareConnection();
 
-        TwitchApi.Init(_clientId, _tokenResponse, out _broadcasterName, out _broadcasterId);
-        
-        var uri = CreateUri(_keepAlive);
-        
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        _ws?.Dispose();
-        _ws = new ClientWebSocket();
+        //! twitch API req cts
+        TwitchApi.Init(_clientId, out _broadcasterName, out _broadcasterId);
+
         await _ws.ConnectAsync(uri, _cts.Token);
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
@@ -182,19 +178,26 @@ public class EventSubWebsocket
         await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
     }
 
-    async Task ReconnectAsync(string newUri)
+    private Uri PrepareConnection()
+    {
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        _ws?.Dispose();
+        _ws = new ClientWebSocket();
+        return CreateUri(_keepAlive);
+    }
+
+    private async Task ReconnectAsync(string newUri)
     {
         try
         {
             if (_ws != null)
             {
                 if (_ws.State is WebSocketState.Open or WebSocketState.CloseReceived)
-                {
                     await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", _cts.Token);
-                }
                 _ws.Dispose();
             }
-            
+
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
             _ws = new ClientWebSocket();
@@ -202,11 +205,11 @@ public class EventSubWebsocket
         }
         catch (Exception e)
         {
-            Debugs.LogError("Reconnect failed: "+e);
+            Debugs.LogError("Reconnect failed: " + e);
             throw;
         }
     }
-    
+
     private async Task HandleMessageAsync()
     {
         Debugs.Log("<color=green>Listening</color> to messages");
@@ -251,7 +254,6 @@ public class EventSubWebsocket
         {
             if (string.IsNullOrEmpty(msg))
             {
-                
                 Debugs.Log("empty msg received. why? idfk! TODO: reconnect event?");
                 return;
             }
@@ -285,7 +287,7 @@ public class EventSubWebsocket
                 break;
             case "notification":
                 HandleEvent(json);
-                break;         
+                break;
             case "session_reconnect":
                 HandleReconnect(json);
                 break;
@@ -349,8 +351,8 @@ public class EventSubWebsocket
         var response = TwitchApi.SubscribeToEvents(subscriptionData);
         var isSuccess = response.IsSuccessStatusCode;
         Debugs.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
-                  $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
-                  $" status: {(int)response.StatusCode}-{response.StatusCode}");
+                   $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
+                   $" status: {(int)response.StatusCode}-{response.StatusCode}");
         if (response.StatusCode == (HttpStatusCode)401)
         {
             // handle expired token

@@ -1,7 +1,6 @@
 ﻿using System.Linq;
 using System.Net.Http;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
@@ -14,7 +13,8 @@ public static class TwitchApi
     private static string _broadcasterId;
     private static string _broadcasterName;
 
-    public static void Init(string clientId, TokenResponse tokenResponse, out string broadcasterName,
+    public static void Init(string clientId,
+        out string broadcasterName,
         out string broadcasterId)
     {
         Debugs.Log("Initializing TwitchApi");
@@ -41,8 +41,7 @@ public static class TwitchApi
         return (broadcasterId, broadcasterName);
     }
 
-    public static (string Id, string Name) GetBroadcaster(string clientId,
-        TokenResponse tokenResponse)
+    public static (string Id, string Name) GetBroadcaster(string clientId, TokenResponse tokenResponse)
     {
         var result = GetUsers(tokenResponse, clientId);
         return ParseBroadcasterUser(result);
@@ -125,7 +124,7 @@ public static class TwitchApi
         return GetUsers(tokenResponse, _clientId, query);
     }
 
-    public static async Task<bool> ValidateToken(TokenResponse tokenResponse, CancellationTokenSource ct = null)
+    public static async Task<bool> ValidateToken(TokenResponse tokenResponse)
     {
         if (tokenResponse == null)
         {
@@ -139,9 +138,8 @@ public static class TwitchApi
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         // Send the GET request
         using var client = new HttpClient();
-        if (ct == null)
-        ct = EventSubWebsocket.GetCancellationTokenSource();
-        var response = await client.SendAsync(request, ct.Token);
+        var cts = EventSubWebsocket.GetCancellationTokenSource();
+        var response = await client.SendAsync(request, cts.Token);
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
         Debugs.Log($"Token is valid: {isValid}");
