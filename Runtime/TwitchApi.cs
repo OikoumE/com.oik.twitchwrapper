@@ -17,7 +17,7 @@ public static class TwitchApi
     public static void Init(string clientId, TokenResponse tokenResponse, out string broadcasterName,
         out string broadcasterId)
     {
-        Debug.Log("Initializing TwitchApi");
+        Debugs.Log("Initializing TwitchApi");
         _clientId = clientId;
         SetBroadcaster();
         broadcasterName = _broadcasterName;
@@ -29,7 +29,7 @@ public static class TwitchApi
     {
         var result = GetUsers();
         (_broadcasterId, _broadcasterName) = ParseBroadcasterUser(result);
-        Debug.Log($"Setting Broadcaster id: {_broadcasterId}, name: {_broadcasterName}");
+        Debugs.Log($"Setting Broadcaster id: {_broadcasterId}, name: {_broadcasterName}");
     }
 
     private static (string Id, string Name) ParseBroadcasterUser(string result)
@@ -93,13 +93,13 @@ public static class TwitchApi
 
         if (response.IsSuccessStatusCode)
         {
-            Debug.Log("Sent chat message: " + chatMessage);
+            Debugs.Log("Sent chat message: " + chatMessage);
         }
         else
         {
             var error = response.Content.ReadAsStringAsync().Result;
-            Debug.LogError("Failed to send chat message");
-            Debug.LogError(error);
+            Debugs.LogError("Failed to send chat message");
+            Debugs.LogError(error);
         }
     }
 
@@ -129,7 +129,7 @@ public static class TwitchApi
     {
         if (tokenResponse == null)
         {
-            Debug.LogWarning("Invalid token!");
+            Debugs.LogWarning("Invalid token!");
             return false;
         }
 
@@ -144,7 +144,7 @@ public static class TwitchApi
         var response = await client.SendAsync(request, ct.Token);
         // If status code is 200, the token is valid
         var isValid = response.IsSuccessStatusCode;
-        Debug.Log($"Token is valid: {isValid}");
+        Debugs.Log($"Token is valid: {isValid}");
         return isValid;
     }
 

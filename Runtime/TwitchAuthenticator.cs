@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Debug = UnityEngine.Debug;
+
 
 public class TwitchAuthenticator
 {
@@ -21,7 +21,7 @@ public class TwitchAuthenticator
 
     public TwitchAuthenticator(string clientId, string scopes)
     {
-        Debug.Log("Initializing TwitchAuthenticator");
+        Debugs.Log("Initializing TwitchAuthenticator");
         _clientId = clientId;
         _scopes = scopes;
     }
@@ -33,13 +33,13 @@ public class TwitchAuthenticator
         // if no token, create
         if (tokenResponse == null)
         {
-            Debug.LogError("No AccessToken stored");
+            Debugs.LogError("No AccessToken stored");
             return await DeviceFlow(timeoutSeconds);
         }
 
         // validate token
         var isValid = await TwitchApi.ValidateToken(tokenResponse);
-        Debug.Log($"TokenResponse valid: <color={(isValid ? "green" : "red")}>{isValid}</color>");
+        Debugs.Log($"TokenResponse valid: <color={(isValid ? "green" : "red")}>{isValid}</color>");
         // if token valid
         if (isValid) return tokenResponse;
         // if not, refresh token
@@ -52,7 +52,7 @@ public class TwitchAuthenticator
         var deviceCodeResponse = RequestDeviceCode(ct);
         if (deviceCodeResponse == null) return null;
 
-        Debug.LogWarning("opening browser!");
+        Debugs.LogWarning("opening browser!");
         // Open the URL in the default browser
         Process.Start(new ProcessStartInfo
         {
@@ -70,7 +70,7 @@ public class TwitchAuthenticator
             { new StringContent(_clientId), "client_id" },
             { new StringContent(_scopes), "scopes" }
         };
-        Debug.Log("Requesting device code");
+        Debugs.Log("Requesting device code");
         var response = _client.PostAsync("https://id.twitch.tv/oauth2/device", content, ct).Result;
         if (!response.IsSuccessStatusCode) return null;
         //5. deserialize
@@ -95,12 +95,12 @@ public class TwitchAuthenticator
         var delay = TimeSpan.FromSeconds(deviceResp.Interval);
         var stopwatch = Stopwatch.StartNew();
 
-        Debug.Log($"Waiting for token: timeout after {timeoutSeconds}sec");
+        Debugs.Log($"Waiting for token: timeout after {timeoutSeconds}sec");
         while (!ct.IsCancellationRequested)
         {
             if (stopwatch.ElapsedMilliseconds > timeoutSeconds * 1000)
             {
-                Debug.LogError("Auth timed out!");
+                Debugs.LogError("Auth timed out!");
                 break;
             }
 
@@ -110,7 +110,7 @@ public class TwitchAuthenticator
                 var json = resp.Content.ReadAsStringAsync().Result;
                 var tokenResponse = JsonConvert.DeserializeObject<TokenResponse>(json);
                 TokenWrapper.SaveToJson(tokenResponse);
-                Debug.Log("Got token");
+                Debugs.Log("Got token");
                 return tokenResponse;
             }
 
@@ -145,7 +145,7 @@ public class TwitchAuthenticator
     {
         // refresh token
         // https://dev.twitch.tv/docs/authentication/refresh-tokens/
-        Debug.Log("<color=blue>Attempting</color> to refresh token");
+        Debugs.Log("<color=blue>Attempting</color> to refresh token");
         using var client = new HttpClient();
         var values = new Dictionary<string, string>
         {
@@ -157,7 +157,7 @@ public class TwitchAuthenticator
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = client.PostAsync("https://id.twitch.tv/oauth2/token", content, ct).Result;
         var success = response.IsSuccessStatusCode;
-        Debug.Log($"Refresh token result: {success}");
+        Debugs.Log($"Refresh token result: {success}");
         if (!success) return null;
         var json = response.Content.ReadAsStringAsync().Result;
         return json; // contains new access and refresh tokens

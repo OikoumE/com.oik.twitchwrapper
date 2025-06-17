@@ -2,7 +2,7 @@
 using System.IO;
 using Newtonsoft.Json;
 using UnityEngine;
-using Debug = UnityEngine.Debug;
+
 
 public static class TokenWrapper
 {
@@ -22,7 +22,7 @@ public static class TokenWrapper
     public static void SaveToJson(TokenResponse token)
     {
         var path = GetPath();
-        Debug.Log("Saving: " + path);
+        Debugs.Log("Saving: " + path);
         var json = JsonConvert.SerializeObject(token);
         File.WriteAllText(path, json);
     }
@@ -30,7 +30,7 @@ public static class TokenWrapper
     public static void RevokeToken()
     {
         var path = GetPath();
-        Debug.Log("Revoking: " + path);
+        Debugs.Log("Revoking: " + path);
         if (File.Exists(path)) File.Delete(path);
     }
 
@@ -41,7 +41,7 @@ public static class TokenWrapper
         if (!File.Exists(path))
             return null;
 
-        Debug.Log("Loaded AccessToken from: " + path);
+        Debugs.Log("Loaded AccessToken from: " + path);
         var token = new TokenResponse();
         JsonConvert.PopulateObject(File.ReadAllText(path), token);
         return token;

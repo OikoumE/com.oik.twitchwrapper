@@ -42,18 +42,6 @@ public class EventSubWebsocket
 
     private float _timeoutSeconds;
 
-    private Dictionary<int, string> _websocketCloseStatusCode = new()
-    {
-        { 4000, "Internal server error" },
-        { 4001, "Client sent inbound traffic" },
-        { 4002, "Client failed ping-pong" },
-        { 4003, "Connection unused" },
-        { 4004, "Reconnect grace time expired" },
-        { 4005, "Network timeout" },
-        { 4006, "Network error" },
-        { 4007, "Invalid reconnect" }
-    };
-
     private ClientWebSocket _ws;
 
     public TwitchChatHandler ChatHandler;
@@ -66,7 +54,7 @@ public class EventSubWebsocket
         string[] ignoreChatCommandFrom = null,
         int keepAlive = 30)
     {
-        Debug.Log("Initializing EventSubWebsocket");
+        Debugs.Log("Initializing EventSubWebsocket");
         _clientId = clientId;
         _eventHandlers = eventHandlers;
         _keepAlive = keepAlive;
@@ -127,7 +115,7 @@ public class EventSubWebsocket
         OnClose = null;
         OnConnected = null;
 
-        Debug.Log($"Websocket closed {_ws?.State}");
+        Debugs.Log($"Websocket closed {_ws?.State}");
     }
 
     private Uri CreateUri(int keepAlive)
@@ -152,11 +140,11 @@ public class EventSubWebsocket
         _timeoutSeconds = timeoutSeconds;
         if (_isConnecting)
         {
-            Debug.LogError("Already connecting");
+            Debugs.LogError("Already connecting");
             return;
         }
 
-        Debug.Log("Connecting EventSubWebsocket");
+        Debugs.Log("Connecting EventSubWebsocket");
 
         _isConnecting = true;
         _cts?.Dispose();
@@ -165,7 +153,7 @@ public class EventSubWebsocket
         _ws = new ClientWebSocket();
 
 
-        Debug.Log("Getting User DeviceToken");
+        Debugs.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
         if (_tokenResponse == null)
             throw new Exception("Error when Authorizing");
@@ -177,7 +165,7 @@ public class EventSubWebsocket
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
-        Debug.Log($"WebSocket Status: {status}");
+        Debugs.Log($"WebSocket Status: {status}");
 #if !UNITY_EDITOR
         try
         {
@@ -185,7 +173,7 @@ public class EventSubWebsocket
         }
         catch (Exception e)
         {
-            Debug.LogError(e);
+            Debugs.LogError(e);
             throw;
         }
 #endif
@@ -197,7 +185,7 @@ public class EventSubWebsocket
 
     private async Task HandleMessageAsync()
     {
-        Debug.Log("<color=green>Listening</color> to messages");
+        Debugs.Log("<color=green>Listening</color> to messages");
         var buffer = new byte[4096];
         while (_ws.State == WebSocketState.Open && _cts.Token.IsCancellationRequested == false)
             try
@@ -212,15 +200,23 @@ public class EventSubWebsocket
             }
             catch (Exception ex)
             {
-                Debug.LogError(ex);
+                Debugs.LogError(ex);
             }
 
 
-        Debug.LogWarning($"Socket status: {_ws.State}");
+        Debugs.LogWarning($"Socket status: {_ws.State}");
         if (_ws.State == WebSocketState.CloseReceived)
-            // _websocketCloseStatusCode
-            Debug.LogError($"closeStatus {_ws.CloseStatus} - {_ws.CloseStatusDescription}");
-        //TODO if closeStatus is number use _websocketCloseStatusCode
+            Debugs.LogError($"closeStatus {_ws.CloseStatus} - {_ws.CloseStatusDescription}");
+        /*
+         4000, "Internal server error"
+         4001, "Client sent inbound traffic"
+         4002, "Client failed ping-pong"
+         4003, "Connection unused"
+         4004, "Reconnect grace time expired"
+         4005, "Network timeout"
+         4006, "Network error"
+         4007, "Invalid reconnect"
+        */
         OnClose?.Invoke();
     }
 
@@ -231,7 +227,8 @@ public class EventSubWebsocket
         {
             if (string.IsNullOrEmpty(msg))
             {
-                Debug.Log("empty msg received. why? idfk!");
+                
+                Debugs.Log("empty msg received. why? idfk!");
                 return;
             }
 
@@ -239,7 +236,7 @@ public class EventSubWebsocket
         }
         catch (Exception e)
         {
-            Debug.LogError($"EventSubWebSocket : Error when parsing json; original message: {msg}");
+            Debugs.LogError($"EventSubWebSocket : Error when parsing json; original message: {msg}");
             Console.WriteLine(e);
             throw;
         }
@@ -248,7 +245,7 @@ public class EventSubWebsocket
         var messageId = metaData?["message_id"]?.ToString();
         if (_messageIds.Contains(messageId))
         {
-            Debug.LogError("<color=red>Message id is already in use</color>, discarding message");
+            Debugs.LogError("<color=red>Message id is already in use</color>, discarding message");
             return;
         }
 
@@ -273,7 +270,7 @@ public class EventSubWebsocket
         // https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#notification-message
         var payload = json["payload"];
         var eventType = payload?["subscription"]?["type"]?.ToString();
-        // Debug.Log($"<color=yellow>New event</color>: {eventType}");
+        // Debugs.Log($"<color=yellow>New event</color>: {eventType}");
         var eEventType = TwitchEventSubScopes.GetScope(eventType);
         if (!_eventHandlers.TryGetValue(eEventType, out var handler))
             return;
@@ -283,7 +280,7 @@ public class EventSubWebsocket
 
     private void HandleKeepAlive(JObject json)
     {
-        // Debug.Log($"<color=green>Keep alive</color>, time since last: {Time.time - _timeOfLastKeepAlive}");
+        // Debugs.Log($"<color=green>Keep alive</color>, time since last: {Time.time - _timeOfLastKeepAlive}");
         _timeOfLastKeepAlive = Time.time;
         // https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#keepalive-message
         //TODO 
@@ -312,24 +309,24 @@ public class EventSubWebsocket
         var subscriptionData = GetSubscriptionCondition(scope);
         var response = TwitchApi.SubscribeToEvents(subscriptionData);
         var isSuccess = response.IsSuccessStatusCode;
-        Debug.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
+        Debugs.Log($"<color=#00FFFF>Subscribing</color> to event: {scope}," +
                   $" OK:<color={(isSuccess ? "green" : "red")}>{isSuccess}</color>," +
                   $" status: {(int)response.StatusCode}-{response.StatusCode}");
         if (response.StatusCode == (HttpStatusCode)401)
         {
             // handle expired token
-            Debug.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
+            Debugs.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
             _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
             if (_tokenResponse == null)
                 throw new Exception("Failed to refresh token");
-            Debug.Log($"Refreshed token, retrying subscribing to scope {scope}");
+            Debugs.Log($"Refreshed token, retrying subscribing to scope {scope}");
             await SubscribeEvent(scope);
         }
         else if (!isSuccess)
         {
             // Handle error
             var responseBody = response.Content.ReadAsStringAsync().Result;
-            Debug.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
+            Debugs.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
         }
     }
 

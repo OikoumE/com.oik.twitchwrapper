@@ -1,6 +1,6 @@
 {
   "name": "com.oik.twitchwrapper",
-  "version": "1.0.47",
+  "version": "1.0.48",
   "displayName": "TwitchWrapper",
   "description": "Oik's twitch eventSub wrapper",
   "unity": "6000.0",
@@ -9,6 +9,6 @@
   },
   "dependencies": {
     "com.unity.nuget.newtonsoft-json": "3.2.1",
-    "com.oik.debugs" : "1.0.0"
+    "com.oik.debugs": "1.0.0"
   }
 }

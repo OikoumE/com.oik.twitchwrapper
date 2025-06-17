@@ -287,7 +287,7 @@ public static class TwitchEventSubScopes
                 scopes.Add(scopeApiVersion.UrlScope);
 
         var scopeString = string.Join(" ", scopes);
-        Debug.Log($"Scopes: {scopeString}");
+        Debugs.Log($"Scopes: {scopeString}");
         return scopeString;
     }
 

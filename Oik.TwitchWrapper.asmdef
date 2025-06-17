@@ -1,3 +1,4 @@
 {
-	"name": "Oik.TwitchWrapper"
+	"name": "Oik.TwitchWrapper",
+	"references":[ "Oik.Debugs" ]
 }

@@ -15,7 +15,7 @@ public class TwitchChatHandler
     public TwitchChatHandler(EventSubWebsocket client,
         Dictionary<CommandString, Action<ChatCommand>> commands, string[] ignoreNames)
     {
-        Debug.Log("Initializing TwitchChatHandler");
+        Debugs.Log("Initializing TwitchChatHandler");
         if (ignoreNames != null)
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
         _client = client;
@@ -61,7 +61,7 @@ public class TwitchChatHandler
         }
 
         var time = DateTime.Now.ToString("HH:mm:ss");
-        Debug.Log($"{time} - {msg.ChatterUserName}: {msg.MessageText}");
+        Debugs.Log($"{time} - {msg.ChatterUserName}: {msg.MessageText}");
     }
 
     private void OnChatCommand(ChatCommand chatCommand)
@@ -69,7 +69,7 @@ public class TwitchChatHandler
         var displayName = chatCommand.ChatterUserName;
         if (_ignoreNames != null && _ignoreNames.Contains(displayName.ToLower()))
         {
-            Debug.Log($"Ignoring {displayName}");
+            Debugs.Log($"Ignoring {displayName}");
             return;
         }
 
