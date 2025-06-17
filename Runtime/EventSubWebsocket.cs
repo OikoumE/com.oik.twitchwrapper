@@ -65,7 +65,7 @@ public class EventSubWebsocket
 
     public static CancellationTokenSource GetCancellationTokenSource()
     {
-        return _cts;
+        return _cts ??= new CancellationTokenSource();
     }
 
     public static TokenResponse GetTokenResponse()
