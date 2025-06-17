@@ -147,11 +147,6 @@ public class EventSubWebsocket
         Debugs.Log("Connecting EventSubWebsocket");
 
         _isConnecting = true;
-        _cts?.Dispose();
-        _cts = new CancellationTokenSource();
-        _ws?.Dispose();
-        _ws = new ClientWebSocket();
-
 
         Debugs.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
@@ -159,8 +154,13 @@ public class EventSubWebsocket
             throw new Exception("Error when Authorizing");
 
         TwitchApi.Init(_clientId, _tokenResponse, out _broadcasterName, out _broadcasterId);
-
+        
         var uri = CreateUri(_keepAlive);
+        
+        _cts?.Dispose();
+        _cts = new CancellationTokenSource();
+        _ws?.Dispose();
+        _ws = new ClientWebSocket();
         await _ws.ConnectAsync(uri, _cts.Token);
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
@@ -182,7 +182,31 @@ public class EventSubWebsocket
         await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
     }
 
-
+    async Task ReconnectAsync(string newUri)
+    {
+        try
+        {
+            if (_ws != null)
+            {
+                if (_ws.State is WebSocketState.Open or WebSocketState.CloseReceived)
+                {
+                    await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", _cts.Token);
+                }
+                _ws.Dispose();
+            }
+            
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+            _ws = new ClientWebSocket();
+            await _ws.ConnectAsync(new Uri(newUri), _cts.Token);
+        }
+        catch (Exception e)
+        {
+            Debugs.LogError("Reconnect failed: "+e);
+            throw;
+        }
+    }
+    
     private async Task HandleMessageAsync()
     {
         Debugs.Log("<color=green>Listening</color> to messages");
@@ -228,7 +252,7 @@ public class EventSubWebsocket
             if (string.IsNullOrEmpty(msg))
             {
                 
-                Debugs.Log("empty msg received. why? idfk!");
+                Debugs.Log("empty msg received. why? idfk! TODO: reconnect event?");
                 return;
             }
 
@@ -261,8 +285,23 @@ public class EventSubWebsocket
                 break;
             case "notification":
                 HandleEvent(json);
+                break;         
+            case "session_reconnect":
+                HandleReconnect(json);
+                break;
+            default:
+                Debugs.LogWarning($"Unhandled event: {type}");
                 break;
         }
+    }
+
+    private void HandleReconnect(JObject json)
+    {
+        //https://dev.twitch.tv/docs/eventsub/handling-websocket-events/#reconnect-message
+        //TODO reconnect
+        Debugs.LogWarning("RECONNECT message received");
+        var newUri = json?["payload"]?["session"]?["reconnect_url"]?.ToString();
+        _ = ReconnectAsync(newUri);
     }
 
     private void HandleEvent(JObject json)
