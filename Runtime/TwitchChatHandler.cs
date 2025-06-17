@@ -40,10 +40,41 @@ public class TwitchChatHandler
             },
             { new CommandString(new[] { "command", "commands", "cmd", "cmds" }), AvailableCommands },
             { new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" }), AddCommand },
-            { new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" }), EditCommand }
+            { new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" }), EditCommand },
+            {
+                new CommandString(new[]
+                {
+                    "cmddelete", "cmdDelete", "deletecmd", "deleteCmd",
+                    "cmdremove", "cmdRemove", "Removecmd", "removeCmd"
+                }),
+                RemoveCommand
+            }
         };
         foreach (var (key, value) in commands)
             _defaultCommands.Add(key, value);
+    }
+
+    private void RemoveCommand(ChatCommand obj)
+    {
+        if (obj.ChatterUserName.ToLower() != "itsoik") return;
+        var messageText = obj.MessageText;
+        var commandToRemove = messageText.Split(" ")[0].Replace(obj.Identifier, "");
+        Debugs.Log($"CommandToRemove {commandToRemove}");
+        if (!_customCommands.ContainsKey(commandToRemove))
+        {
+            var fail = $"{commandToRemove} is not a valid command.";
+            Debugs.LogWarning(fail);
+            TwitchApi.SendChatMessage(fail);
+            return;
+        }
+
+        var success = $"{commandToRemove} removed successfully.";
+        Debugs.Log(success);
+        TwitchApi.SendChatMessage(success);
+        _customCommands.Remove(commandToRemove);
+        var command = _defaultCommands.FirstOrDefault(x => x.Key.Commands.Contains(commandToRemove));
+        if (command is { Key: not null, Value: not null })
+            _defaultCommands.Remove(command.Key);
     }
 
     private void AppendCustomCommands()
