@@ -86,6 +86,7 @@ public class TwitchChatHandler
 
     private void EditCommand(ChatCommand obj)
     {
+        if (obj.ChatterUserName.ToLower() != "itsoik") return;
         var messageText = obj.MessageText;
         var newResponseText = string.Join(" ", messageText.Split(" ")[1..]);
         var commandToChange = messageText.Split(" ")[0].Replace(obj.Identifier, "");
@@ -98,6 +99,15 @@ public class TwitchChatHandler
             return;
         }
 
+
+        var asd = _defaultCommands.FirstOrDefault(x =>
+            x.Key.Commands.Contains(commandToChange));
+        if (asd is { Key: not null, Value: not null })
+        {
+            _defaultCommands.Remove(asd.Key);
+            _defaultCommands.Add(asd.Key, _ => TwitchApi.SendChatMessage(newResponseText));
+        }
+
         _customCommands[commandToChange] = newResponseText;
         TwitchApi.SendChatMessage($"{commandToChange} successfully edited!");
         SaveToJson();
@@ -105,6 +115,7 @@ public class TwitchChatHandler
 
     private void AddCommand(ChatCommand obj)
     {
+        if (obj.ChatterUserName.ToLower() != "itsoik") return;
         var messageText = obj.MessageText;
         var commandToAdd = messageText.Split(" ")[0].Replace(obj.Identifier, "");
         Debugs.Log($"CommandToAdd: {commandToAdd}");
@@ -116,6 +127,8 @@ public class TwitchChatHandler
 
         var newResponseText = string.Join(" ", messageText.Split(" ")[1..]);
         _customCommands[commandToAdd] = newResponseText;
+        _defaultCommands.Add(new CommandString(commandToAdd), _ => TwitchApi.SendChatMessage(newResponseText));
+
         var success = $"{commandToAdd} Successfully added!";
         Debugs.Log(success);
         TwitchApi.SendChatMessage(success);

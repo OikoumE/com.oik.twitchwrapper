@@ -28,14 +28,14 @@ public class EventSubWebsocket
 {
     private static TokenResponse _tokenResponse;
     private static CancellationTokenSource _cts;
+    private static string _broadcasterId;
+    private static string _broadcasterName;
     private readonly TwitchAuthenticator _authenticator;
     private readonly string _clientId;
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
-    private string _broadcasterId;
 
-    private string _broadcasterName;
     private bool _isConnecting;
     private string _sessionId;
     private float _timeOfLastKeepAlive;
@@ -369,6 +369,11 @@ public class EventSubWebsocket
             var responseBody = response.Content.ReadAsStringAsync().Result;
             Debugs.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
         }
+    }
+
+    public static (string broadcasterName, string broadcasterId) GetBroadcaster()
+    {
+        return (_broadcasterName, _broadcasterId);
     }
 
     private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
