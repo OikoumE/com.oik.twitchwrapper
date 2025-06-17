@@ -3,7 +3,7 @@
   "version": "1.0.47",
   "displayName": "TwitchWrapper",
   "description": "Oik's twitch eventSub wrapper",
-  "unity": "2020.3",
+  "unity": "6000.0",
   "author": {
     "name": "Oik"
   },
