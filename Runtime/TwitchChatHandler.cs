@@ -11,9 +11,9 @@ public class TwitchChatHandler
     private readonly EventSubWebsocket _client;
 
     private readonly string[] _ignoreNames;
+    private Dictionary<CommandString, Action<ChatCommand>> _commands;
 
     private Dictionary<string, string> _customCommands;
-    private Dictionary<CommandString, Action<ChatCommand>> _defaultCommands;
 
     public TwitchChatHandler(EventSubWebsocket client,
         Dictionary<CommandString, Action<ChatCommand>> commands, string[] ignoreNames)
@@ -23,13 +23,16 @@ public class TwitchChatHandler
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
         _client = client;
         SetupCommands(commands);
-        AppendCustomCommands();
     }
+
+    #region SETUP COMMANDS
 
     private void SetupCommands(Dictionary<CommandString, Action<ChatCommand>> commands)
     {
-        _defaultCommands = new Dictionary<CommandString, Action<ChatCommand>>
+        _commands = new Dictionary<CommandString, Action<ChatCommand>>
         {
+            #region SILLY COMMANDS
+
             {
                 new CommandString(new[] { "hello", "hi" }),
                 c => TwitchApi.SendChatMessage($"Hello {c.ChatterUserName}!")
@@ -39,6 +42,11 @@ public class TwitchChatHandler
                 _ => TwitchApi.SendChatMessage("I am a Twitch bot running on Oik.TwitchWrapper!")
             },
             { new CommandString(new[] { "command", "commands", "cmd", "cmds" }), AvailableCommands },
+
+            #endregion
+
+            #region CUSTOM COMMAND HANDLER
+
             { new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" }), AddCommand },
             { new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" }), EditCommand },
             {
@@ -49,40 +57,24 @@ public class TwitchChatHandler
                 }),
                 RemoveCommand
             }
+
+            #endregion
         };
         foreach (var (key, value) in commands)
-            _defaultCommands.Add(key, value);
-    }
-
-    private void RemoveCommand(ChatCommand obj)
-    {
-        if (obj.ChatterUserName.ToLower() != "itsoik") return;
-        var messageText = obj.MessageText;
-        var commandToRemove = messageText.Split(" ")[0].Replace(obj.Identifier, "");
-        Debugs.Log($"CommandToRemove {commandToRemove}");
-        if (!_customCommands.ContainsKey(commandToRemove))
-        {
-            var fail = $"{commandToRemove} is not a valid command.";
-            Debugs.LogWarning(fail);
-            TwitchApi.SendChatMessage(fail);
-            return;
-        }
-
-        var success = $"{commandToRemove} removed successfully.";
-        Debugs.Log(success);
-        TwitchApi.SendChatMessage(success);
-        _customCommands.Remove(commandToRemove);
-        var command = _defaultCommands.FirstOrDefault(x => x.Key.Commands.Contains(commandToRemove));
-        if (command is { Key: not null, Value: not null })
-            _defaultCommands.Remove(command.Key);
+            _commands.Add(key, value);
+        AppendCustomCommands();
     }
 
     private void AppendCustomCommands()
     {
         _customCommands = LoadFromJson();
         foreach (var (commandString, responseString) in _customCommands.ToList())
-            _defaultCommands.Add(new CommandString(commandString), _ => TwitchApi.SendChatMessage(responseString));
+            _commands.Add(new CommandString(commandString), _ => TwitchApi.SendChatMessage(responseString));
     }
+
+    #endregion
+
+    #region SAVE/LOAD CUSTOM COMMANDS
 
     private static string GetPath()
     {
@@ -115,6 +107,29 @@ public class TwitchChatHandler
         return new Dictionary<string, string>();
     }
 
+    #region SERIALIZATION WRAPPER
+
+    [Serializable]
+    private class SerializationWrapper
+    {
+        public List<string> keys;
+        public List<string> values;
+
+        public Dictionary<string, string> ToDictionary()
+        {
+            var dict = new Dictionary<string, string>();
+            for (var i = 0; i < keys.Count; i++)
+                dict[keys[i]] = values[i];
+            return dict;
+        }
+    }
+
+    #endregion
+
+    #endregion
+
+    #region CUSTOM COMMANDS
+
     private void EditCommand(ChatCommand obj)
     {
         if (obj.ChatterUserName.ToLower() != "itsoik") return;
@@ -131,12 +146,12 @@ public class TwitchChatHandler
         }
 
 
-        var asd = _defaultCommands.FirstOrDefault(x =>
+        var asd = _commands.FirstOrDefault(x =>
             x.Key.Commands.Contains(commandToChange));
         if (asd is { Key: not null, Value: not null })
         {
-            _defaultCommands.Remove(asd.Key);
-            _defaultCommands.Add(asd.Key, _ => TwitchApi.SendChatMessage(newResponseText));
+            _commands.Remove(asd.Key);
+            _commands.Add(asd.Key, _ => TwitchApi.SendChatMessage(newResponseText));
         }
 
         _customCommands[commandToChange] = newResponseText;
@@ -158,7 +173,7 @@ public class TwitchChatHandler
 
         var newResponseText = string.Join(" ", messageText.Split(" ")[1..]);
         _customCommands[commandToAdd] = newResponseText;
-        _defaultCommands.Add(new CommandString(commandToAdd), _ => TwitchApi.SendChatMessage(newResponseText));
+        _commands.Add(new CommandString(commandToAdd), _ => TwitchApi.SendChatMessage(newResponseText));
 
         var success = $"{commandToAdd} Successfully added!";
         Debugs.Log(success);
@@ -166,6 +181,32 @@ public class TwitchChatHandler
         SaveToJson();
     }
 
+    private void RemoveCommand(ChatCommand obj)
+    {
+        if (obj.ChatterUserName.ToLower() != "itsoik") return;
+        var messageText = obj.MessageText;
+        var commandToRemove = messageText.Split(" ")[0].Replace(obj.Identifier, "");
+        Debugs.Log($"CommandToRemove {commandToRemove}");
+        if (!_customCommands.ContainsKey(commandToRemove))
+        {
+            var fail = $"{commandToRemove} is not a valid command.";
+            Debugs.LogWarning(fail);
+            TwitchApi.SendChatMessage(fail);
+            return;
+        }
+
+        var success = $"{commandToRemove} removed successfully.";
+        Debugs.Log(success);
+        TwitchApi.SendChatMessage(success);
+        _customCommands.Remove(commandToRemove);
+        var command = _commands.FirstOrDefault(x => x.Key.Commands.Contains(commandToRemove));
+        if (command is { Key: not null, Value: not null })
+            _commands.Remove(command.Key);
+    }
+
+    #endregion
+
+    #region HANDLE INCOMING COMMAND
 
     public void OnChatMessage(JObject payload)
     {
@@ -191,29 +232,6 @@ public class TwitchChatHandler
         Debugs.Log($"{time} - {msg.ChatterUserName}: {msg.MessageText}");
     }
 
-    private void OnChatCommand(ChatCommand chatCommand)
-    {
-        var displayName = chatCommand.ChatterUserName;
-        if (_ignoreNames != null && _ignoreNames.Contains(displayName.ToLower()))
-        {
-            Debugs.Log($"Ignoring {displayName}");
-            return;
-        }
-
-        var commandText = chatCommand.CommandText;
-        foreach (var (command, action) in _defaultCommands.ToList())
-            if (command.Commands.Contains(commandText.ToLower()))
-                action.Invoke(chatCommand);
-    }
-
-    private void AvailableCommands(ChatCommand _)
-    {
-        var defaultCommands = _defaultCommands.Keys.Select(x => x.Commands[0]).ToArray();
-        var reply = string.Join(", ", defaultCommands);
-        TwitchApi.SendChatMessage(reply);
-    }
-
-
     public static ChatMessage ParseChatMessagePayload(JObject payload)
     {
         var eventNotification = payload?["event"];
@@ -227,18 +245,27 @@ public class TwitchChatHandler
         return new ChatMessage(messageText, chatterUserId, chatterUserLogin, chatterUserName);
     }
 
-    [Serializable]
-    private class SerializationWrapper
+    private void OnChatCommand(ChatCommand chatCommand)
     {
-        public List<string> keys;
-        public List<string> values;
-
-        public Dictionary<string, string> ToDictionary()
+        var displayName = chatCommand.ChatterUserName;
+        if (_ignoreNames != null && _ignoreNames.Contains(displayName.ToLower()))
         {
-            var dict = new Dictionary<string, string>();
-            for (var i = 0; i < keys.Count; i++)
-                dict[keys[i]] = values[i];
-            return dict;
+            Debugs.Log($"Ignoring {displayName}");
+            return;
         }
+
+        var commandText = chatCommand.CommandText;
+        foreach (var (command, action) in _commands.ToList())
+            if (command.Commands.Contains(commandText.ToLower()))
+                action.Invoke(chatCommand);
     }
+
+    private void AvailableCommands(ChatCommand _)
+    {
+        var defaultCommands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
+        var reply = string.Join(", ", defaultCommands);
+        TwitchApi.SendChatMessage(reply);
+    }
+
+    #endregion
 }
