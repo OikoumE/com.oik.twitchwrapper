@@ -60,7 +60,12 @@ public class TwitchChatHandler
 
     public void SaveToJson()
     {
-        var json = JsonUtility.ToJson(_customCommands);
+        var wrapper = new SerializationWrapper
+        {
+            keys = _customCommands.Keys.ToList(),
+            values = _customCommands.Values.ToList()
+        };
+        var json = JsonUtility.ToJson(wrapper);
         File.WriteAllText(GetPath(), json);
     }
 
