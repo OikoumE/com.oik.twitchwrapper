@@ -9,7 +9,6 @@ public class TwitchChatHandler
 {
     private const string FileName = "commands.json";
     private readonly EventSubWebsocket _client;
-    private readonly Dictionary<CommandString, Action<ChatCommand>> _commands;
 
     private readonly string[] _ignoreNames;
 
@@ -23,12 +22,11 @@ public class TwitchChatHandler
         if (ignoreNames != null)
             _ignoreNames = ignoreNames.Select(x => x.ToLower()).ToArray();
         _client = client;
-        _commands = commands;
-        SetupCommands();
+        SetupCommands(commands);
         AppendCustomCommands();
     }
 
-    private void SetupCommands()
+    private void SetupCommands(Dictionary<CommandString, Action<ChatCommand>> commands)
     {
         _defaultCommands = new Dictionary<CommandString, Action<ChatCommand>>
         {
@@ -44,13 +42,15 @@ public class TwitchChatHandler
             { new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" }), AddCommand },
             { new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" }), EditCommand }
         };
+        foreach (var (key, value) in commands)
+            _defaultCommands.Add(key, value);
     }
 
     private void AppendCustomCommands()
     {
         _customCommands = LoadFromJson();
-        foreach (var (key, value) in _customCommands)
-            _defaultCommands.Add(new CommandString(key), _ => TwitchApi.SendChatMessage(value));
+        foreach (var (commandString, responseString) in _customCommands.ToList())
+            _defaultCommands.Add(new CommandString(commandString), _ => TwitchApi.SendChatMessage(responseString));
     }
 
     private static string GetPath()
@@ -170,11 +170,7 @@ public class TwitchChatHandler
         }
 
         var commandText = chatCommand.CommandText;
-        foreach (var (command, action) in _defaultCommands)
-            if (command.Commands.Contains(commandText.ToLower()))
-                action.Invoke(chatCommand);
-        if (_commands is not { Count: > 0 }) return;
-        foreach (var (command, action) in _commands)
+        foreach (var (command, action) in _defaultCommands.ToList())
             if (command.Commands.Contains(commandText.ToLower()))
                 action.Invoke(chatCommand);
     }
@@ -182,9 +178,7 @@ public class TwitchChatHandler
     private void AvailableCommands(ChatCommand _)
     {
         var defaultCommands = _defaultCommands.Keys.Select(x => x.Commands[0]).ToArray();
-        var commands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
         var reply = string.Join(", ", defaultCommands);
-        reply += ", " + string.Join(", ", commands);
         TwitchApi.SendChatMessage(reply);
     }
 
