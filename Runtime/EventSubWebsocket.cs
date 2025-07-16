@@ -146,22 +146,36 @@ public class EventSubWebsocket
 
         Debugs.Log("Connecting EventSubWebsocket");
 
-        _isConnecting = true;
 
         Debugs.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
         if (_tokenResponse == null)
             throw new Exception("Error when Authorizing");
-        var uri = PrepareConnection();
 
-        //! twitch API req cts
+        // dispose and create ws/cts
+        (_ws, _cts) = PrepareConnection();
+        //! twitch API require cts (PrepareConnection();)
         TwitchApi.Init(_clientId, out _broadcasterName, out _broadcasterId);
 
+        var uri = CreateUri(_keepAlive);
+        await ConnectAndHandleMessages(uri);
+    }
+
+    private async Task ConnectAndHandleMessages(Uri uri)
+    {
+        _isConnecting = true;
         await _ws.ConnectAsync(uri, _cts.Token);
         var connected = _ws.State == WebSocketState.Open;
         var status = "<color=green>Connected</color>";
         if (!connected) status = "<color=red>Failed to Connect</color>";
         Debugs.Log($"WebSocket Status: {status}");
+        SendSuccessToChat();
+        await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
+        _isConnecting = false;
+    }
+
+    private void SendSuccessToChat()
+    {
 #if !UNITY_EDITOR
         try
         {
@@ -173,41 +187,48 @@ public class EventSubWebsocket
             throw;
         }
 #endif
-
-        _isConnecting = false;
-        await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
     }
 
-    private Uri PrepareConnection()
+    private (ClientWebSocket ws, CancellationTokenSource cts) PrepareConnection()
     {
         _cts?.Dispose();
-        _cts = new CancellationTokenSource();
+        var cts = new CancellationTokenSource();
         _ws?.Dispose();
-        _ws = new ClientWebSocket();
-        return CreateUri(_keepAlive);
+        var ws = new ClientWebSocket();
+        return (ws, cts);
     }
 
     private async Task ReconnectAsync(string newUri)
     {
+        Debugs.LogWarning("Attempting reconnect!");
         try
         {
             if (_ws != null)
             {
+                Debugs.Log("Websocket was not null");
                 if (_ws.State is WebSocketState.Open or WebSocketState.CloseReceived)
+                {
+                    Debugs.Log($"Websocket state: {_ws.State} - closing for reconnect");
                     await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", _cts.Token);
+                }
+
                 _ws.Dispose();
             }
 
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-            _ws = new ClientWebSocket();
-            await _ws.ConnectAsync(new Uri(newUri), _cts.Token);
+            (_ws, _cts) = PrepareConnection();
+            Debugs.Log("Websocket & CancellationTokenSource Reinitialized");
+            await ConnectAndHandleMessages(new Uri(newUri));
+
+            // await _ws.ConnectAsync(new Uri(newUri), _cts.Token);
+            // await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
         }
         catch (Exception e)
         {
             Debugs.LogError("Reconnect failed: " + e);
             throw;
         }
+
+        Debugs.Log("Websocket Reconnected");
     }
 
     private async Task HandleMessageAsync()
@@ -221,8 +242,9 @@ public class EventSubWebsocket
                 var msg = Encoding.UTF8.GetString(buffer, 0, result.Count);
                 HandleIncomingMessage(msg);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException e)
             {
+                Debugs.LogError($"Websocket was cancelled - {e.Message}");
                 /* expected on cancel */
             }
             catch (Exception ex)
