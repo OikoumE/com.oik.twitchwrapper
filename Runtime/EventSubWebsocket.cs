@@ -212,6 +212,7 @@ public class EventSubWebsocket
                     await _ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "Reconnecting", _cts.Token);
                 }
 
+                _cts.Cancel();
                 _ws.Dispose();
             }
 
@@ -276,7 +277,7 @@ public class EventSubWebsocket
         {
             if (string.IsNullOrEmpty(msg))
             {
-                Debugs.Log("empty msg received. why? idfk! TODO: reconnect event?");
+                Debugs.LogError("empty msg received. why? idfk! TODO: reconnect event?");
                 return;
             }
 
