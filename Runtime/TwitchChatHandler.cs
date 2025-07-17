@@ -208,19 +208,155 @@ public class TwitchChatHandler
 
     #region HANDLE INCOMING COMMAND
 
+    private class payloadStrct
+    {
+    }
+
     public void OnChatMessage(JObject payload)
     {
         /*
-            {
-            "subscription":
-                 "event": {
-                     "chatter_user_id": "93645775",
-                     "chatter_user_login": "itsoik",
-                     "chatter_user_name": "itsOiK",
-                     "message": {"text": "d"}
+        [TwitchChatHandler.cs:224 - OnChatMessage]
+        {
+          "subscription": {
+            "id": //!REDACTED
+            "status": "enabled",
+            "type": "channel.chat.message",
+            "version": "1",
+            "condition": {
+              "broadcaster_user_id": "93645775",
+              "user_id": "93645775"
+            },
+            "transport": {
+              "method": "websocket",
+              "session_id": //!REDACTED
+            },
+            "created_at": "2025-07-17T18:36:30.272596576Z",
+            "cost": 0
+          },
+          "event": {
+            "broadcaster_user_id": "93645775",
+            "broadcaster_user_login": "itsoik",
+            "broadcaster_user_name": "itsOiK",
+            "source_broadcaster_user_id": null,
+            "source_broadcaster_user_login": null,
+            "source_broadcaster_user_name": null,
+            "chatter_user_id": "93645775",
+            "chatter_user_login": "itsoik",
+            "chatter_user_name": "itsOiK",
+            "message_id": //!REDACTED
+            "source_message_id": null,
+            "is_source_only": null,
+            "message": {
+              "text": "d",
+              "fragments": [
+                {
+                  "type": "text",
+                  "text": "text text text",
+                  "cheermote": null,
+                  "emote": null,
+                  "mention": null
                 }
-            }
+              ]
+            },
+            "color": "#FF4500",
+            "badges": [
+              {
+                "set_id": "broadcaster",
+                "id": "1",
+                "info": ""
+              },
+              {
+                "set_id": "subscriber",
+                "id": "3012",
+                "info": "75"
+              },
+              {
+                "set_id": "gone-bananas",
+                "id": "1",
+                "info": ""
+              }
+            ],
+            "source_badges": null,
+            "message_type": "text",
+            "cheer": null,
+            "reply": null,
+            "channel_points_custom_reward_id": null,
+            "channel_points_animation_id": null
+          }
+        }
         */
+        //! ONLY MESSAGE & FRAGS
+        /*
+         "message": {
+      "text": "asdasdas itsoikAYAYA lalala KEKHeim a9a99a @woosaaahh",
+      "frags" : [{start: 5, end: 15, }]
+      "fragments": [
+        {
+          "type": "text",
+          "text": "asdasdas ",
+          "cheermote": null,
+          "emote": null,
+          "mention": null
+        },
+        {
+          "type": "emote",
+          "text": "itsoikAYAYA",
+          "cheermote": null,
+          "emote": {
+            "id": "emotesv2_5692357ae2d64d85b00c1f38de18610e",
+            "emote_set_id": "300126312",
+            "owner_id": "93645775",
+            "format": [
+              "static"
+            ]
+          },
+          "mention": null
+        },
+        {
+          "type": "text",
+          "text": " lalala ",
+          "cheermote": null,
+          "emote": null,
+          "mention": null
+        },
+        {
+          "type": "emote",
+          "text": "KEKHeim",
+          "cheermote": null,
+          "emote": {
+            "id": "emotesv2_7c5d25facc384c47963d25a5057a0b40",
+            "emote_set_id": "0",
+            "owner_id": "0",
+            "format": [
+              "static"
+            ]
+          },
+          "mention": null
+        },
+        {
+          "type": "text",
+          "text": " a9a99a ",
+          "cheermote": null,
+          "emote": null,
+          "mention": null
+        },
+        {
+          "type": "mention",
+          "text": "@woosaaahh",
+          "cheermote": null,
+          "emote": null,
+          "mention": {
+            "user_id": "811200849",
+            "user_login": "woosaaahh",
+            "user_name": "woosaaahh"
+          }
+        }
+      ]
+    },
+    "color": "#FF4500"
+         */
+
+
         var msg = ParseChatMessagePayload(payload);
         if (msg.MessageText.StartsWith("!"))
         {
@@ -241,8 +377,9 @@ public class TwitchChatHandler
         var chatterUserId = eventNotification?["chatter_user_id"]?.ToString();
         var chatterUserLogin = eventNotification?["chatter_user_login"]?.ToString();
         var chatterUserName = eventNotification?["chatter_user_name"]?.ToString();
+        var color = eventNotification?["color"]?.ToString();
 
-        return new ChatMessage(messageText, chatterUserId, chatterUserLogin, chatterUserName);
+        return new ChatMessage(messageText, chatterUserId, chatterUserLogin, chatterUserName, color);
     }
 
     private void OnChatCommand(ChatCommand chatCommand)

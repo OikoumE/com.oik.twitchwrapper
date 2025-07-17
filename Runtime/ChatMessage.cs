@@ -3,14 +3,16 @@
 public class ChatMessage
 {
     private readonly DateTime _timestamp;
+    public readonly string ChatterColor;
     public readonly string ChatterUserId;
     public readonly string ChatterUserLogin;
     public readonly string ChatterUserName;
     public readonly string MessageText;
 
     public ChatMessage(string messageText, string chatterUserId, string chatterUserLogin,
-        string chatterUserName)
+        string chatterUserName, string color)
     {
+        ChatterColor = color;
         MessageText = messageText;
         ChatterUserId = chatterUserId;
         ChatterUserLogin = chatterUserLogin;
