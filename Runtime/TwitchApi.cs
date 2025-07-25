@@ -1,5 +1,7 @@
 ﻿using System.Linq;
+using System.Net;
 using System.Net.Http;
+using System.Security.Authentication;
 using System.Text;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -69,7 +71,7 @@ public static class TwitchApi
     }
 
 
-    public static void SendChatMessage(string chatMessage)
+    public static void SendChatMessage(string chatMessage, int attempt = 0)
     {
         //TODO to send msg's as bot, we need a token for bot...
         var uri = "https://api.twitch.tv/helix/chat/messages";
@@ -94,10 +96,19 @@ public static class TwitchApi
         {
             Debugs.Log("Sent chat message: " + chatMessage);
         }
+        else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            if (attempt > 10)
+                throw new AuthenticationException("failed to refresh token and resend message");
+            Debugs.LogError("Failed to send message, attempting to refresh token");
+            _ = EventSubWebsocket.instance.Handle401();
+            Debug.LogWarning("Token refreshed, attempting to resend chat message");
+            attempt += 1;
+            SendChatMessage(chatMessage, attempt);
+        }
         else
         {
             var error = response.Content.ReadAsStringAsync().Result;
-            Debugs.LogError("Failed to send chat message");
             Debugs.LogError(error);
         }
     }

@@ -61,7 +61,10 @@ public class EventSubWebsocket
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
         SetupChatHandler(chatCommands, ignoreChatCommandFrom);
+        instance = this;
     }
+
+    public static EventSubWebsocket instance { get; private set; }
 
     public static CancellationTokenSource GetCancellationTokenSource()
     {
@@ -145,7 +148,6 @@ public class EventSubWebsocket
         }
 
         Debugs.Log("Connecting EventSubWebsocket");
-
 
         Debugs.Log("Getting User DeviceToken");
         _tokenResponse = await _authenticator.RunDeviceFlowAsync(_timeoutSeconds);
@@ -368,6 +370,16 @@ public class EventSubWebsocket
         OnConnected?.Invoke(true, _broadcasterName);
     }
 
+    public async Task Handle401()
+    {
+        Debugs.LogError("Expired token, refreshing token");
+        _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
+        if (_tokenResponse == null)
+            throw new Exception("Failed to refresh token");
+        Debugs.Log($"Refreshed token expires:{_tokenResponse.ExpiresIn}");
+    }
+
+
     private async Task SubscribeEvent(TwitchEventSubScopes.EScope scope)
     {
         var subscriptionData = GetSubscriptionCondition(scope);
@@ -380,9 +392,10 @@ public class EventSubWebsocket
         {
             // handle expired token
             Debugs.LogError($"Expired token, refreshing token and retrying to subscribe to scope {scope}");
-            _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
-            if (_tokenResponse == null)
-                throw new Exception("Failed to refresh token");
+            // _tokenResponse = await _authenticator.Handle401(_timeoutSeconds, _clientId, _tokenResponse);
+            // if (_tokenResponse == null)
+            //     throw new Exception("Failed to refresh token");
+            await Handle401();
             Debugs.Log($"Refreshed token, retrying subscribing to scope {scope}");
             await SubscribeEvent(scope);
         }
