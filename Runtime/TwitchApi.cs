@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Security.Authentication;
@@ -69,7 +70,55 @@ public static class TwitchApi
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         return HttpClient.SendAsync(request, ct).Result;
     }
+//TODO search:
+// channels : https://dev.twitch.tv/docs/api/reference/#search-channels
+// streams : https://dev.twitch.tv/docs/api/reference/#get-streams
+// teams : https://dev.twitch.tv/docs/api/reference/#get-teams
+//TODO get category ID
+// https://dev.twitch.tv/docs/api/reference/#search-categories
 
+    public static void GetCategory(string categoryName = "")
+    {
+        /* example response
+        {
+            "data": [
+                {
+                    "id": "33214",
+                    "name": "Fortnite",
+                    "box_art_url": "https://static-cdn.jtvnw.net/ttv-boxart/33214-52x72.jpg"
+                },
+                ...
+            ],
+            "pagination": {
+                "cursor": "eyJiIjpudWxsLCJhIjp7IkN"
+            }
+        }
+        */
+
+
+        if (string.IsNullOrEmpty(categoryName))
+            categoryName = "Software%20and%20game%20development";
+        var uri = $"https://api.twitch.tv/helix/search/categories?query={categoryName}";
+        var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+        request.Headers.Add("Client-Id", _clientId);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
+
+        if (response.IsSuccessStatusCode)
+        {
+            var json = response.Content.ReadAsStringAsync().Result;
+            var result = JsonUtility.FromJson<CategoryResponse>(json);
+            foreach (var categoryData in result.data)
+                Debugs.Log(categoryData);
+        }
+        else
+        {
+            Debugs.LogError("error: " + response.StatusCode);
+        }
+    }
 
     public static void SendChatMessage(string chatMessage, int attempt = 0)
     {
@@ -169,5 +218,26 @@ public static class TwitchApi
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = client.SendAsync(request, ct).Result;
         return response.Content.ReadAsStringAsync().Result;
+    }
+
+    public class CategoryResponse
+    {
+        [JsonProperty("data")] public List<CategoryData> data { get; set; }
+
+        [JsonProperty("pagination")] public Pagination pagination { get; set; }
+    }
+
+    public class Pagination
+    {
+        [JsonProperty("cursor")] public string cursor { get; set; }
+    }
+
+    public class CategoryData
+    {
+        [JsonProperty("box_art_url")] public string BoxArtURL;
+
+        [JsonProperty("id")] public string ID;
+
+        [JsonProperty("name")] public string Name;
     }
 }
