@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -59,7 +60,7 @@ public static class TwitchApi
     public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
     {
         var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
-        var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
 
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
@@ -70,36 +71,53 @@ public static class TwitchApi
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         return HttpClient.SendAsync(request, ct).Result;
     }
+
 //TODO search:
 // channels : https://dev.twitch.tv/docs/api/reference/#search-channels
-// streams : https://dev.twitch.tv/docs/api/reference/#get-streams
 // teams : https://dev.twitch.tv/docs/api/reference/#get-teams
-//TODO get category ID
-// https://dev.twitch.tv/docs/api/reference/#search-categories
 
-    public static void GetCategory(string categoryName = "")
+    public static StreamData[] GetAllDevStreams()
     {
-        /* example response
+        var streams = new List<StreamData>();
+        var response = GetStreams();
+        if (response == null)
         {
-            "data": [
-                {
-                    "id": "33214",
-                    "name": "Fortnite",
-                    "box_art_url": "https://static-cdn.jtvnw.net/ttv-boxart/33214-52x72.jpg"
-                },
-                ...
-            ],
-            "pagination": {
-                "cursor": "eyJiIjpudWxsLCJhIjp7IkN"
-            }
+            Debug.LogError("No streams found");
+            return null;
         }
-        */
 
+        streams.AddRange(response.data);
 
-        if (string.IsNullOrEmpty(categoryName))
-            categoryName = "Software%20and%20game%20development";
-        var uri = $"https://api.twitch.tv/helix/search/categories?query={categoryName}";
-        var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        var maxIt = 1000;
+        var currIt = 0;
+        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
+        {
+            currIt++;
+            if (currIt >= maxIt)
+            {
+                Debugs.LogError("Reached max iterations");
+                break;
+            }
+
+            response = GetStreams(response.pagination.cursor);
+            if (response == null) break;
+            streams.AddRange(response.data);
+        }
+
+        return streams.ToArray();
+    }
+
+    public static StreamDataResponse GetStreams(string cursor = "", string[] gameIds = null)
+    {
+        // GetStreams : https://dev.twitch.tv/docs/api/reference/#get-streams
+        gameIds ??= new[] { "1469308723" };
+        var query = "";
+        foreach (var gameId in gameIds)
+            query += $"&game_id={gameId}";
+        if (!string.IsNullOrEmpty(cursor))
+            query += "&after=" + cursor;
+        var uri = $"https://api.twitch.tv/helix/streams?first=100&{query}";
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
 
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
@@ -110,15 +128,66 @@ public static class TwitchApi
         if (response.IsSuccessStatusCode)
         {
             var json = response.Content.ReadAsStringAsync().Result;
-            var result = JsonUtility.FromJson<CategoryResponse>(json);
-            foreach (var categoryData in result.data)
-                Debugs.Log(categoryData);
+            var result = JsonConvert.DeserializeObject<StreamDataResponse>(json);
+            if (result != null) return result;
+        }
+        else
+        {
+            Debugs.LogError("error: " + response.StatusCode);
+        }
+
+        return null;
+    }
+
+
+    public static void GetCategory(string categoryName = "")
+    {
+        // https://dev.twitch.tv/docs/api/reference/#search-categories
+        /* example response
+             {
+                 "data": [
+                     {
+                         "id": "33214",
+                         "name": "Fortnite",
+                         "box_art_url": "https://static-cdn.jtvnw.net/ttv-boxart/33214-52x72.jpg"
+                     },
+                     ...
+                 ],
+                 "pagination": {
+                     "cursor": "eyJiIjpudWxsLCJhIjp7IkN"
+                 }
+             }
+             */
+        //* Name: Software and Game Development
+        //* ID: 1469308723
+        //* BoxArtURL: https://static-cdn.jtvnw.net/ttv-boxart/1469308723-52x72.jpg
+        if (string.IsNullOrEmpty(categoryName))
+            categoryName = "development";
+        var uri = $"https://api.twitch.tv/helix/search/categories?query={categoryName}";
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+        request.Headers.Add("Client-Id", _clientId);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
+
+        if (response.IsSuccessStatusCode)
+        {
+            var json = response.Content.ReadAsStringAsync().Result;
+            var result = JsonConvert.DeserializeObject<CategoryResponse>(json);
+            if (result?.data != null)
+                foreach (var categoryData in result.data)
+                    Debugs.Log(categoryData);
+            else
+                Debugs.LogError("error: fucking serialized shit");
         }
         else
         {
             Debugs.LogError("error: " + response.StatusCode);
         }
     }
+
 
     public static void SendChatMessage(string chatMessage, int attempt = 0)
     {
@@ -239,5 +308,31 @@ public static class TwitchApi
         [JsonProperty("id")] public string ID;
 
         [JsonProperty("name")] public string Name;
+    }
+
+    public class StreamDataResponse
+    {
+        [JsonProperty("data")] public List<StreamData> data { get; set; }
+
+        [JsonProperty("pagination")] public Pagination pagination { get; set; }
+    }
+
+    public class StreamData
+    {
+        [JsonProperty("id")] public string id { get; set; }
+        [JsonProperty("user_id")] public string userId { get; set; }
+        [JsonProperty("user_login")] public string userLogin { get; set; }
+        [JsonProperty("user_name")] public string userName { get; set; }
+        [JsonProperty("game_id")] public string gameId { get; set; }
+        [JsonProperty("game_name")] public string gameName { get; set; }
+        [JsonProperty("type")] public string type { get; set; }
+        [JsonProperty("title")] public string title { get; set; }
+        [JsonProperty("tags")] public List<string> tags { get; set; }
+        [JsonProperty("viewer_count")] public int viewerCount { get; set; }
+        [JsonProperty("started_at")] public DateTime startedAt { get; set; }
+        [JsonProperty("language")] public string language { get; set; }
+        [JsonProperty("thumbnail_url")] public string thumbnailUrl { get; set; }
+        [JsonProperty("tag_ids")] public List<string> tagIds { get; set; }
+        [JsonProperty("is_mature")] public bool isMature { get; set; }
     }
 }
