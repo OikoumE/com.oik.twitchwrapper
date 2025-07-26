@@ -56,11 +56,10 @@ public static class TwitchApi
         return (Id: _broadcasterId, Name: _broadcasterName);
     }
 
-
     public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
     {
         var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        var request = new HttpRequestMessage(HttpMethod.Post, uri);
 
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
@@ -69,8 +68,26 @@ public static class TwitchApi
         var jsonBody = JsonConvert.SerializeObject(subscriptionData);
         request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
-        return HttpClient.SendAsync(request, ct).Result;
+        var result = HttpClient.SendAsync(request, ct).Result;
+        if (result.IsSuccessStatusCode)
+            return result;
+        Debug.LogError(result.StatusCode);
+        throw new HttpRequestException("Failed to subscribe to event");
     }
+    // public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
+    // {
+    //     var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
+    //     var request = new HttpRequestMessage(HttpMethod.Post, uri);
+    //
+    //     var tokenResponse = EventSubWebsocket.GetTokenResponse();
+    //     request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+    //     request.Headers.Add("Client-Id", _clientId);
+    //
+    //     var jsonBody = JsonConvert.SerializeObject(subscriptionData);
+    //     request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+    //     var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+    //     return HttpClient.SendAsync(request, ct).Result;
+    // }
 
 //TODO search:
 // channels : https://dev.twitch.tv/docs/api/reference/#search-channels
