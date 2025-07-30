@@ -1,4 +1,5 @@
 ﻿using System;
+using UnityEngine;
 
 public class ChatCommand
 {
@@ -16,7 +17,8 @@ public class ChatCommand
         var cmd = msg.MessageText.Split(" ");
         Identifier = cmd[0][..1]; // grab first char in first word
         CommandText = cmd[0][1..]; // grab first word, except char[0]
-        MessageText = msg.MessageText[(cmd[0].Length + 1)..]; // grab rest of text without identifier & commandText
+        var startIndex = Mathf.Clamp(cmd[0].Length + 1, 0, msg.MessageText.Length);
+        MessageText = msg.MessageText[startIndex..]; // grab rest of text without identifier & commandText
         ChatterUserId = msg.ChatterUserId;
         ChatterUserLogin = msg.ChatterUserLogin;
         ChatterUserName = msg.ChatterUserName;
