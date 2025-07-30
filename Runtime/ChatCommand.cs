@@ -3,6 +3,7 @@
 public class ChatCommand
 {
     private readonly DateTime _timestamp;
+    public readonly string ChatterColor;
     public readonly string ChatterUserId;
     public readonly string ChatterUserLogin;
     public readonly string ChatterUserName;
@@ -13,24 +14,22 @@ public class ChatCommand
     public ChatCommand(ChatMessage msg)
     {
         var cmd = msg.MessageText.Split(" ");
-        CommandText = cmd[0][1..];
-        Identifier = cmd[0][..1];
-        MessageText = string.Join(" ", cmd[1..]);
+        Identifier = cmd[0][..1]; // grab first char in first word
+        CommandText = cmd[0][1..]; // grab first word, except char[0]
+        MessageText = msg.MessageText[(cmd[0].Length + 1)..]; // grab rest of text without identifier & commandText
         ChatterUserId = msg.ChatterUserId;
         ChatterUserLogin = msg.ChatterUserLogin;
         ChatterUserName = msg.ChatterUserName;
+        ChatterColor = msg.ChatterColor;
         _timestamp = DateTime.Now;
     }
 
-    public (string identifier, string cmd, string msg, int userID, string userName, string displayName)
+    public (string identifier, string cmd, string msg,
+        int userID, string userName, string displayName, string chatterColor)
         Deconstruct()
     {
-        return (Identifier,
-            CommandText,
-            MessageText,
-            int.Parse(ChatterUserId),
-            ChatterUserLogin,
-            ChatterUserName);
+        return (Identifier, CommandText, MessageText,
+            int.Parse(ChatterUserId), ChatterUserLogin, ChatterUserName, ChatterColor);
     }
 
     public string Timestamp(string format = "HH:mm:ss")
