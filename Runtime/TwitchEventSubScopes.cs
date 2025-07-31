@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
-using UnityEngine;
 
 //TODO 
 // https://dev.twitch.tv/docs/authentication/scopes/
@@ -279,16 +277,18 @@ public static class TwitchEventSubScopes
     }
 
 
-    public static string GetUrlScopes(EScope[] eScope)
+    public static string[] GetUrlScopes(EScope[] eScope)
     {
-        var scopes = new List<string> { "user:write:chat" };
-        foreach (var scopeApiVersion in EventSubScopes)
+        var scopes = new string[eScope.Length + 1];
+        scopes[^1] = "user:write:chat";
+        for (var i = 0; i < EventSubScopes.Length; i++)
+        {
+            var scopeApiVersion = EventSubScopes[i];
             if (eScope.Contains(scopeApiVersion.Scope) && !scopes.Contains(scopeApiVersion.UrlScope))
-                scopes.Add(scopeApiVersion.UrlScope);
+                scopes[i] = scopeApiVersion.UrlScope;
+        }
 
-        var scopeString = string.Join(" ", scopes);
-        Debugs.Log($"Scopes: {scopeString}");
-        return scopeString;
+        return scopes;
     }
 
     public static EScope GetScope(string apiName)

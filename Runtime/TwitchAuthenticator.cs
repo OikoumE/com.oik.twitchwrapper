@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Net.Http;
 using System.Text;
 using System.Threading;
@@ -8,7 +9,6 @@ using System.Threading.Tasks;
 using System.Web;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-
 
 public class TwitchAuthenticator
 {
@@ -19,11 +19,11 @@ public class TwitchAuthenticator
     private readonly string _clientId;
     private readonly string _scopes;
 
-    public TwitchAuthenticator(string clientId, string scopes)
+    public TwitchAuthenticator(string clientId, string[] scopes)
     {
         Debugs.Log("Initializing TwitchAuthenticator");
         _clientId = clientId;
-        _scopes = scopes;
+        _scopes = string.Join(" ", scopes.Distinct());
     }
 
     public async Task<TokenResponse> RunDeviceFlowAsync(float timeoutSeconds)
