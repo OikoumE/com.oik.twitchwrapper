@@ -3,13 +3,44 @@ using UnityEngine;
 
 public class ChatCommand
 {
+    /// <summary>
+    ///     TimeStamp of when we received the command
+    /// </summary>
     private readonly DateTime _timestamp;
+
+    /// <summary>
+    ///     Chat color of who sent the command
+    /// </summary>
     public readonly string ChatterColor;
+
+    /// <summary>
+    ///     UserId of who sent the command
+    /// </summary>
     public readonly string ChatterUserId;
+
+    /// <summary>
+    ///     UserLogin of who sent the command
+    /// </summary>
     public readonly string ChatterUserLogin;
+
+    /// <summary>
+    ///     UserName of who sent the command
+    /// </summary>
     public readonly string ChatterUserName;
+
+    /// <summary>
+    ///     The Text of the command (e.g "raid") without the identifier (e.g "!")
+    /// </summary>
     public readonly string CommandText;
+
+    /// <summary>
+    ///     The identifier for the command (usually "!")
+    /// </summary>
     public readonly string Identifier;
+
+    /// <summary>
+    ///     MessageText is stripped of CommandText and Identifier
+    /// </summary>
     public readonly string MessageText;
 
     public ChatCommand(ChatMessage msg)
