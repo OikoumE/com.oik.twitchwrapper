@@ -182,6 +182,7 @@ public class EventSubWebsocket
         try
         {
             TwitchApi.SendChatMessage("Connected to WebSocket!");
+            TwitchApi.SendChatAnnouncement("Connected to WebSocket!");
         }
         catch (Exception e)
         {
@@ -257,6 +258,14 @@ public class EventSubWebsocket
 
 
         Debugs.LogWarning($"Socket status: {_ws.State}");
+        // if 4007 received, do full reconnect
+        if (_ws.CloseStatus == (WebSocketCloseStatus)4007)
+        {
+            Debugs.LogError("Reconnect failed (4007), starting new session");
+            await ConnectAsync(_timeoutSeconds); // full reconnect: new token/session/subs
+            return;
+        }
+
         if (_ws.State == WebSocketState.CloseReceived)
             Debugs.LogError($"closeStatus {_ws.CloseStatus} - {_ws.CloseStatusDescription}");
         /*

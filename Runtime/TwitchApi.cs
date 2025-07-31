@@ -45,49 +45,75 @@ public static class TwitchApi
         return (broadcasterId, broadcasterName);
     }
 
-    public static (string Id, string Name) GetBroadcaster(string clientId, TokenResponse tokenResponse)
-    {
-        var result = GetUsers(tokenResponse, clientId);
-        return ParseBroadcasterUser(result);
-    }
+    #region RAID
 
-    public static (string Id, string Name) GetBroadcaster()
+    public static void ExecuteRaid(string targetId)
     {
-        return (Id: _broadcasterId, Name: _broadcasterName);
-    }
-
-    public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
-    {
-        var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
+        //https://dev.twitch.tv/docs/api/raids/#to-raid-another-broadcaster
+        var uri = $"https://api.twitch.tv/helix/raids?from_broadcaster_id=12345678&to_broadcaster_id={targetId}";
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
+        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+        request.Headers.Add("Client-Id", _clientId);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var result = HttpClient.SendAsync(request, ct).Result;
+        if (result.IsSuccessStatusCode)
+            return;
+        Debugs.LogError(result.StatusCode);
+    }
+
+    #endregion
+
+    private static HttpRequestMessage CreateDefaultRequest(HttpMethod method, string uri)
+    {
+        var request = new HttpRequestMessage(method, uri);
 
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         request.Headers.Add("Client-Id", _clientId);
+        return request;
+    }
 
+    #region WEBSOCKET
+
+    public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
+    {
+        var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
+        var request = CreateDefaultRequest(HttpMethod.Post, uri);
         var jsonBody = JsonConvert.SerializeObject(subscriptionData);
         request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var result = HttpClient.SendAsync(request, ct).Result;
         if (result.IsSuccessStatusCode)
             return result;
-        Debug.LogError(result.StatusCode);
+        Debugs.LogError(result.StatusCode);
         throw new HttpRequestException("Failed to subscribe to event");
     }
-    // public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
-    // {
-    //     var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
-    //     var request = new HttpRequestMessage(HttpMethod.Post, uri);
-    //
-    //     var tokenResponse = EventSubWebsocket.GetTokenResponse();
-    //     request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-    //     request.Headers.Add("Client-Id", _clientId);
-    //
-    //     var jsonBody = JsonConvert.SerializeObject(subscriptionData);
-    //     request.Content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
-    //     var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
-    //     return HttpClient.SendAsync(request, ct).Result;
-    // }
+
+    public static async Task<bool> ValidateToken(TokenResponse tokenResponse)
+    {
+        if (tokenResponse == null)
+        {
+            Debugs.LogWarning("Invalid token!");
+            return false;
+        }
+
+        // Set Authorization header with Bearer token
+        var uri = "https://id.twitch.tv/oauth2/validate";
+        var request = new HttpRequestMessage(HttpMethod.Get, uri);
+        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
+        // Send the GET request
+        var cts = EventSubWebsocket.GetCancellationTokenSource();
+        var response = await HttpClient.SendAsync(request, cts.Token);
+        // If status code is 200, the token is valid
+        var isValid = response.IsSuccessStatusCode;
+        Debugs.Log($"Token is valid: {isValid}");
+        return isValid;
+    }
+
+    #endregion
+
+    #region GET STREAM/CATEGORY
 
 //TODO search:
 // channels : https://dev.twitch.tv/docs/api/reference/#search-channels
@@ -99,7 +125,7 @@ public static class TwitchApi
         var response = GetStreams();
         if (response == null)
         {
-            Debug.LogError("No streams found");
+            Debugs.LogError("No streams found");
             return null;
         }
 
@@ -134,11 +160,8 @@ public static class TwitchApi
         if (!string.IsNullOrEmpty(cursor))
             query += "&after=" + cursor;
         var uri = $"https://api.twitch.tv/helix/streams?first=100&{query}";
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        var tokenResponse = EventSubWebsocket.GetTokenResponse();
 
-        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-        request.Headers.Add("Client-Id", _clientId);
+        var request = CreateDefaultRequest(HttpMethod.Get, uri);
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = HttpClient.SendAsync(request, ct).Result;
 
@@ -181,11 +204,8 @@ public static class TwitchApi
         if (string.IsNullOrEmpty(categoryName))
             categoryName = "development";
         var uri = $"https://api.twitch.tv/helix/search/categories?query={categoryName}";
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        var tokenResponse = EventSubWebsocket.GetTokenResponse();
+        var request = CreateDefaultRequest(HttpMethod.Get, uri);
 
-        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-        request.Headers.Add("Client-Id", _clientId);
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = HttpClient.SendAsync(request, ct).Result;
 
@@ -205,16 +225,36 @@ public static class TwitchApi
         }
     }
 
+    #endregion
+
+    #region CHAT
+
+    public static void SendChatAnnouncement(string announcement,
+        AnnouncementColor announcementColor = AnnouncementColor.Primary)
+    {
+        //https://dev.twitch.tv/docs/api/reference/#send-chat-announcement
+        //-d '{"message":"Hello chat!","color":"purple"}'
+        //TODO
+        var uri =
+            $"https://api.twitch.tv/helix/chat/announcements?broadcaster_id={_broadcasterId}&moderator_id={_broadcasterId}";
+        var request = CreateDefaultRequest(HttpMethod.Post, uri);
+        var payload = new
+        {
+            message = announcement,
+            color = announcementColor.ToString().ToLower()
+        };
+        request.Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
+        if (response.IsSuccessStatusCode) Debugs.Log("Sent chat announcement: " + announcement);
+    }
 
     public static void SendChatMessage(string chatMessage, int attempt = 0)
     {
+        //https://dev.twitch.tv/docs/api/reference/#send-chat-message
         //TODO to send msg's as bot, we need a token for bot...
         var uri = "https://api.twitch.tv/helix/chat/messages";
-        var request = new HttpRequestMessage(HttpMethod.Post, uri);
-        var tokenResponse = EventSubWebsocket.GetTokenResponse();
-
-        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-        request.Headers.Add("Client-Id", _clientId);
+        var request = CreateDefaultRequest(HttpMethod.Post, uri);
 
         var payload = new
         {
@@ -237,7 +277,7 @@ public static class TwitchApi
                 throw new AuthenticationException("failed to refresh token and resend message");
             Debugs.LogError("Failed to send message, attempting to refresh token");
             _ = EventSubWebsocket.instance.Handle401();
-            Debug.LogWarning("Token refreshed, attempting to resend chat message");
+            Debugs.LogWarning("Token refreshed, attempting to resend chat message");
             attempt += 1;
             SendChatMessage(chatMessage, attempt);
         }
@@ -246,6 +286,20 @@ public static class TwitchApi
             var error = response.Content.ReadAsStringAsync().Result;
             Debugs.LogError(error);
         }
+    }
+
+    #endregion
+
+    #region GET USERS
+
+    private static string GetUsers(string query = "")
+    {
+        var uri = "https://api.twitch.tv/helix/users";
+        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
+        var request = CreateDefaultRequest(HttpMethod.Get, uri);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
+        return response.Content.ReadAsStringAsync().Result;
     }
 
     public static string GetUsers(int[] ids)
@@ -264,46 +318,17 @@ public static class TwitchApi
         return GetUsers(query);
     }
 
-    private static string GetUsers(string query = "")
+    #endregion
+
+    #region TYPES
+
+    public enum AnnouncementColor
     {
-        var tokenResponse = EventSubWebsocket.GetTokenResponse();
-        return GetUsers(tokenResponse, _clientId, query);
-    }
-
-    public static async Task<bool> ValidateToken(TokenResponse tokenResponse)
-    {
-        if (tokenResponse == null)
-        {
-            Debugs.LogWarning("Invalid token!");
-            return false;
-        }
-
-        // Set Authorization header with Bearer token
-        var uri = "https://id.twitch.tv/oauth2/validate";
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
-        // Send the GET request
-        using var client = new HttpClient();
-        var cts = EventSubWebsocket.GetCancellationTokenSource();
-        var response = await client.SendAsync(request, cts.Token);
-        // If status code is 200, the token is valid
-        var isValid = response.IsSuccessStatusCode;
-        Debugs.Log($"Token is valid: {isValid}");
-        return isValid;
-    }
-
-    private static string GetUsers(TokenResponse token, string clientId = "", string query = "")
-    {
-        var uri = "https://api.twitch.tv/helix/users";
-        if (!string.IsNullOrEmpty(query)) uri += $"?{query}";
-        var request = new HttpRequestMessage(HttpMethod.Get, uri);
-        request.Headers.Add("Authorization", $"Bearer {token.AccessToken}");
-        request.Headers.Add("Client-Id", clientId);
-
-        using var client = new HttpClient();
-        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
-        var response = client.SendAsync(request, ct).Result;
-        return response.Content.ReadAsStringAsync().Result;
+        Blue,
+        Green,
+        Orange,
+        Purple,
+        Primary // (default)
     }
 
     public class CategoryResponse
@@ -352,4 +377,6 @@ public static class TwitchApi
         [JsonProperty("tag_ids")] public List<string> tagIds { get; set; }
         [JsonProperty("is_mature")] public bool isMature { get; set; }
     }
+
+    #endregion
 }
