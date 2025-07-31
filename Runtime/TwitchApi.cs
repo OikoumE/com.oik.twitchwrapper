@@ -229,9 +229,18 @@ public static class TwitchApi
 
     #region CHAT
 
+    private static DateTime _lastAnnouncementSent;
+
     public static void SendChatAnnouncement(string announcement,
         AnnouncementColor announcementColor = AnnouncementColor.Primary, int attempt = 0)
     {
+        if (DateTime.Now - _lastAnnouncementSent < TimeSpan.FromSeconds(2))
+        {
+            SendChatMessage("Announcement is on cooldown");
+            return;
+        }
+
+        //! Rate Limits: One announcement may be sent every 2 seconds.
         //https://dev.twitch.tv/docs/api/reference/#send-chat-announcement
         //-d '{"message":"Hello chat!","color":"purple"}'
         //TODO
@@ -250,11 +259,12 @@ public static class TwitchApi
         var response = HttpClient.SendAsync(request, ct).Result;
         if (response.IsSuccessStatusCode)
         {
+            _lastAnnouncementSent = DateTime.Now;
             Debugs.Log("Sent chat announcement: " + announcement);
         }
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            if (attempt > 10)
+            if (attempt > 3)
                 throw new AuthenticationException("failed to refresh token and resend message");
             Debugs.LogError("Failed to send message, attempting to refresh token");
             _ = EventSubWebsocket.instance.Handle401();
@@ -293,7 +303,7 @@ public static class TwitchApi
         }
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
         {
-            if (attempt > 10)
+            if (attempt > 3)
                 throw new AuthenticationException("failed to refresh token and resend message");
             Debugs.LogError("Failed to send message, attempting to refresh token");
             _ = EventSubWebsocket.instance.Handle401();
