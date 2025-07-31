@@ -281,12 +281,17 @@ public static class TwitchEventSubScopes
     {
         var scopes = new string[eScope.Length + 1];
         scopes[^1] = "user:write:chat";
-        for (var i = 0; i < EventSubScopes.Length; i++)
-        {
-            var scopeApiVersion = EventSubScopes[i];
-            if (eScope.Contains(scopeApiVersion.Scope) && !scopes.Contains(scopeApiVersion.UrlScope))
-                scopes[i] = scopeApiVersion.UrlScope;
-        }
+
+        var scopeApiVersions = EventSubScopes.Where(x => eScope.Contains(x.Scope)).ToArray();
+        for (var i = 0; i < scopeApiVersions.Length; i++)
+            scopes[i] = scopeApiVersions[i].UrlScope;
+
+        // for (var i = 0; i < EventSubScopes.Length; i++)
+        // {
+        //     var scopeApiVersion = EventSubScopes[i];
+        //     if (eScope.Contains(scopeApiVersion.Scope) && !scopes.Contains(scopeApiVersion.UrlScope))
+        //         scopes[i] = scopeApiVersion.UrlScope;
+        // }
 
         return scopes;
     }
