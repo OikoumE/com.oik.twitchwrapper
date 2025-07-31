@@ -391,7 +391,7 @@ public class TwitchChatHandler
             return;
         }
 
-        var commands = _commands.Where(kv => kv.Key.IsTarget(chatCommand));
+        var commands = _commands.Where(kv => kv.Key.IsValid(chatCommand));
         foreach (var action in commands.ToArray())
             action.Value.Invoke(chatCommand);
     }
