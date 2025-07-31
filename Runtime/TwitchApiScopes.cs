@@ -17,6 +17,7 @@ public static class TwitchApiScopes
         ChannelManageSchedule,
         ModeratorManageShoutouts,
         ChannelManageVips,
+        ChannelManageRaids, //channel:manage:raids
         ChannelManageVideos,
         ChannelManageWhispers,
         ChannelReadGoals,
@@ -62,6 +63,7 @@ public static class TwitchApiScopes
             EScope.ChannelManageRedemptions => "channel:manage:redemptions",
             EScope.ChannelManageSchedule => "channel:manage:schedule",
             EScope.ChannelManageVips => "channel:manage:vips",
+            EScope.ChannelManageRaids => "channel:manage:raids",
             EScope.ChannelManageVideos => "channel:manage:videos",
             EScope.ChannelManageWhispers => "user:manage:whispers",
             EScope.ChannelReadGoals => "channel:read:goals",
