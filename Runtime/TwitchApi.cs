@@ -50,11 +50,14 @@ public static class TwitchApi
     public static void ExecuteRaid(string targetId)
     {
         //https://dev.twitch.tv/docs/api/raids/#to-raid-another-broadcaster
-        var uri = $"https://api.twitch.tv/helix/raids?from_broadcaster_id=12345678&to_broadcaster_id={targetId}";
+        var (_, broadcasterId) = EventSubWebsocket.GetBroadcaster();
+        var uri = $"https://api.twitch.tv/helix/raids?from_broadcaster_id={broadcasterId}&to_broadcaster_id={targetId}";
         var request = new HttpRequestMessage(HttpMethod.Post, uri);
         var tokenResponse = EventSubWebsocket.GetTokenResponse();
         request.Headers.Add("Authorization", $"Bearer {tokenResponse.AccessToken}");
         request.Headers.Add("Client-Id", _clientId);
+
+
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var result = HttpClient.SendAsync(request, ct).Result;
         if (result.IsSuccessStatusCode)
