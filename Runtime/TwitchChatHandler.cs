@@ -387,14 +387,13 @@ public class TwitchChatHandler
         var displayName = chatCommand.ChatterUserName;
         if (_ignoreNames != null && _ignoreNames.Contains(displayName.ToLower()))
         {
-            Debugs.Log($"Ignoring {displayName}");
+            Debugs.Log($"Ignoring chat command from: {displayName}");
             return;
         }
 
-        var commandText = chatCommand.CommandText;
-        foreach (var (command, action) in _commands.ToList())
-            if (command.Commands.Contains(commandText.ToLower()))
-                action.Invoke(chatCommand);
+        var commands = _commands.Where(kv => kv.Key.IsTarget(chatCommand));
+        foreach (var action in commands.ToArray())
+            action.Value.Invoke(chatCommand);
     }
 
     private void AvailableCommands(ChatCommand _)

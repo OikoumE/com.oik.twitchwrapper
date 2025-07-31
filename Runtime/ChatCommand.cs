@@ -57,6 +57,11 @@ public class ChatCommand
         _timestamp = DateTime.Now;
     }
 
+    /// <summary>
+    ///     Int version of ChatterUserId
+    /// </summary>
+    public int userId => int.Parse(ChatterUserId);
+
     public (string identifier, string cmd, string msg,
         int userID, string userName, string displayName, string chatterColor)
         Deconstruct()
