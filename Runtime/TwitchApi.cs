@@ -230,7 +230,7 @@ public static class TwitchApi
     #region CHAT
 
     public static void SendChatAnnouncement(string announcement,
-        AnnouncementColor announcementColor = AnnouncementColor.Primary)
+        AnnouncementColor announcementColor = AnnouncementColor.Primary, int attempt = 0)
     {
         //https://dev.twitch.tv/docs/api/reference/#send-chat-announcement
         //-d '{"message":"Hello chat!","color":"purple"}'
@@ -240,13 +240,33 @@ public static class TwitchApi
         var request = CreateDefaultRequest(HttpMethod.Post, uri);
         var payload = new
         {
+            broadcaster_id = _broadcasterId,
+            sender_id = _broadcasterId,
             message = announcement,
             color = announcementColor.ToString().ToLower()
         };
         request.Content = new StringContent(JsonConvert.SerializeObject(payload), Encoding.UTF8, "application/json");
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = HttpClient.SendAsync(request, ct).Result;
-        if (response.IsSuccessStatusCode) Debugs.Log("Sent chat announcement: " + announcement);
+        if (response.IsSuccessStatusCode)
+        {
+            Debugs.Log("Sent chat announcement: " + announcement);
+        }
+        else if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            if (attempt > 10)
+                throw new AuthenticationException("failed to refresh token and resend message");
+            Debugs.LogError("Failed to send message, attempting to refresh token");
+            _ = EventSubWebsocket.instance.Handle401();
+            Debugs.LogWarning("Token refreshed, attempting to resend chat message");
+            attempt += 1;
+            SendChatAnnouncement(announcement, announcementColor, attempt);
+        }
+        else
+        {
+            var error = response.Content.ReadAsStringAsync().Result;
+            Debugs.LogError(error);
+        }
     }
 
     public static void SendChatMessage(string chatMessage, int attempt = 0)
