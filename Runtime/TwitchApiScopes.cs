@@ -4,61 +4,51 @@ public static class TwitchApiScopes
 {
     public enum EScope
     {
-        AnalyticsReadExtensions, // "analytics:read:extensions"
-        AnalyticsReadGames, // "analytics:read:games"
-        BitsRead, // "bits:read"
-        ChannelBot, // "channel:bot"
-        ChannelEditCommercial, // "channel:edit:commercial"
-        ChannelManageAnnouncements, // "channel:manage:announcements"
-        ChannelManageBroadcast, // "channel:manage:broadcast"
-        ChannelManageExtensions, // "channel:manage:extensions"
-        ChannelManageGoals, // "channel:manage:goals"
-        ChannelManagePolls, // "channel:manage:polls"
-        ChannelManagePredictions, // "channel:manage:predictions"
-        ChannelManageRedemptions, // "channel:manage:redemptions"
-        ChannelManageSchedule, // "channel:manage:schedule"
-        ChannelManageShieldMode, // "channel:manage:shield_mode"
-        ChannelManageShoutouts, // "channel:manage:shoutouts"
-        ChannelManageVips, // "channel:manage:vips"
-        ChannelManageVideos, // "channel:manage:videos"
-        ChannelManageWhispers, // "channel:manage:whispers"
-        ChannelReadCommunityPoints, // "channel:read:community_points"
-        ChannelReadEditors, // "channel:read:editors"
-        ChannelReadGoals, // "channel:read:goals"
-        ChannelReadHypeTrain, // "channel:read:hype_train"
-        ChannelReadPolls, // "channel:read:polls"
-        ChannelReadPredictions, // "channel:read:predictions"
-        ChannelReadRedemptions, // "channel:read:redemptions"
-        ChannelReadSubscriptions, // "channel:read:subscriptions"
-        ChannelReadVips, // "channel:read:vips"
-        ChannelReadStreamKey, // "channel:read:stream_key"
-        ClipsEdit, // "clips:edit"
-        ModerationRead, // "moderation:read"
-        ModerationManageAutomodSettings, // "moderation:manage:automod_settings"
-        ModerationManageBannedUsers, // "moderation:manage:banned_users"
-        ModerationManageBlockedTerms, // "moderation:manage:blocked_terms"
-        ModerationManageChatSettings, // "moderation:manage:chat_settings"
-        ModerationManageShieldMode, // "moderation:manage:shield_mode"
-        ModerationManageSlowMode, // "moderation:manage:slow_mode"
-        ModerationManageUnbanRequests, // "moderation:manage:unban_requests"
-        UserEdit, // "user:edit"
-        UserEditBroadcast, // "user:edit:broadcast"
-        UserManageBlockedUsers, // "user:manage:blocked_users"
-        UserManageWhispers, // "user:manage:whispers"
-        UserReadBlockedUsers, // "user:read:blocked_users"
-        UserReadBroadcast, // "user:read:broadcast"
-        UserReadEmail, // "user:read:email"
-        UserReadFollowers, // "user:read:followers"
-        UserReadSubscriptions, // "user:read:subscriptions"
-        UserReadFollows, // "user:read:follows"
-        UserReadStreamKey, // "user:read:stream_key"
-        UserReadVips, // "user:read:subscriptions"
-        WhispersRead, // "user:read:vips"
-        WhispersEdit // "user:read:broadcast"
+        AnalyticsReadExtensions,
+        AnalyticsReadGames,
+        BitsRead,
+        ChannelBot,
+        ChannelEditCommercial,
+        ModeratorManageAnnouncements,
+        ChannelManageBroadcast,
+        ChannelManagePolls,
+        ChannelManagePredictions,
+        ChannelManageRedemptions,
+        ChannelManageSchedule,
+        ModeratorManageShoutouts,
+        ChannelManageVips,
+        ChannelManageVideos,
+        ChannelManageWhispers,
+        ChannelReadGoals,
+        ChannelReadHypeTrain,
+        ChannelReadPolls,
+        ChannelReadPredictions,
+        ChannelReadRedemptions,
+        ChannelReadSubscriptions,
+        ChannelReadVips,
+        ChannelReadStreamKey,
+        ClipsEdit,
+        ModeratorManageAutomodSettings,
+        ModeratorManageBannedUsers,
+        ModeratorManageBlockedTerms,
+        ModeratorManageChatSettings,
+        ModeratorManageShieldMode,
+        ModeratorManageUnbanRequests,
+        UserEditBroadcast,
+        UserManageBlockedUsers,
+        UserManageWhispers,
+        UserReadBlockedUsers,
+        UserReadBroadcast,
+        UserReadEmail,
+        UserReadSubscriptions,
+        ModeratorReadFollowers,
+        UserReadFollows,
+        UserReadVips
     }
 
     public static string GetScope(EScope scope)
     {
+        //moderator:manage:announcements
         return scope switch
         {
             EScope.AnalyticsReadExtensions => "analytics:read:extensions",
@@ -66,21 +56,14 @@ public static class TwitchApiScopes
             EScope.BitsRead => "bits:read",
             EScope.ChannelBot => "channel:bot",
             EScope.ChannelEditCommercial => "channel:edit:commercial",
-            EScope.ChannelManageAnnouncements => "channel:manage:announcements",
             EScope.ChannelManageBroadcast => "channel:manage:broadcast",
-            EScope.ChannelManageExtensions => "channel:manage:extensions",
-            EScope.ChannelManageGoals => "channel:manage:goals",
             EScope.ChannelManagePolls => "channel:manage:polls",
             EScope.ChannelManagePredictions => "channel:manage:predictions",
             EScope.ChannelManageRedemptions => "channel:manage:redemptions",
             EScope.ChannelManageSchedule => "channel:manage:schedule",
-            EScope.ChannelManageShieldMode => "channel:manage:shield_mode",
-            EScope.ChannelManageShoutouts => "channel:manage:shoutouts",
             EScope.ChannelManageVips => "channel:manage:vips",
             EScope.ChannelManageVideos => "channel:manage:videos",
-            EScope.ChannelManageWhispers => "channel:manage:whispers",
-            EScope.ChannelReadCommunityPoints => "channel:read:community_points",
-            EScope.ChannelReadEditors => "channel:read:editors",
+            EScope.ChannelManageWhispers => "user:manage:whispers",
             EScope.ChannelReadGoals => "channel:read:goals",
             EScope.ChannelReadHypeTrain => "channel:read:hype_train",
             EScope.ChannelReadPolls => "channel:read:polls",
@@ -90,28 +73,24 @@ public static class TwitchApiScopes
             EScope.ChannelReadVips => "channel:read:vips",
             EScope.ChannelReadStreamKey => "channel:read:stream_key",
             EScope.ClipsEdit => "clips:edit",
-            EScope.ModerationRead => "moderation:read",
-            EScope.ModerationManageAutomodSettings => "moderation:manage:automod_settings",
-            EScope.ModerationManageBannedUsers => "moderation:manage:banned_users",
-            EScope.ModerationManageBlockedTerms => "moderation:manage:blocked_terms",
-            EScope.ModerationManageChatSettings => "moderation:manage:chat_settings",
-            EScope.ModerationManageShieldMode => "moderation:manage:shield_mode",
-            EScope.ModerationManageSlowMode => "moderation:manage:slow_mode",
-            EScope.ModerationManageUnbanRequests => "moderation:manage:unban_requests",
-            EScope.UserEdit => "user:edit",
+            EScope.ModeratorManageAutomodSettings => "moderator:manage:automod_settings",
+            EScope.ModeratorManageBannedUsers => "moderator:manage:banned_users",
+            EScope.ModeratorManageBlockedTerms => "moderator:manage:blocked_terms",
+            EScope.ModeratorManageChatSettings => "moderator:manage:chat_settings",
+            EScope.ModeratorManageShieldMode => "moderator:manage:shield_mode",
+            EScope.ModeratorManageUnbanRequests => "moderator:manage:unban_requests",
+            EScope.ModeratorManageShoutouts => "moderator:manage:shoutouts",
+            EScope.ModeratorManageAnnouncements => "moderator:manage:announcements",
+            EScope.ModeratorReadFollowers => "moderator:read:followers",
             EScope.UserEditBroadcast => "user:edit:broadcast",
             EScope.UserManageBlockedUsers => "user:manage:blocked_users",
             EScope.UserManageWhispers => "user:manage:whispers",
             EScope.UserReadBlockedUsers => "user:read:blocked_users",
             EScope.UserReadBroadcast => "user:read:broadcast",
             EScope.UserReadEmail => "user:read:email",
-            EScope.UserReadFollowers => "user:read:followers",
             EScope.UserReadSubscriptions => "user:read:subscriptions",
             EScope.UserReadFollows => "user:read:follows",
-            EScope.UserReadStreamKey => "user:read:stream_key",
             EScope.UserReadVips => "user:read:subscriptions",
-            EScope.WhispersRead => "user:read:vips",
-            EScope.WhispersEdit => "user:read:broadcast",
             _ => throw new ArgumentOutOfRangeException(nameof(scope), scope, null)
         };
     }
