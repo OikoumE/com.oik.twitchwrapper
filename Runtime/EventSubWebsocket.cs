@@ -204,7 +204,7 @@ public class EventSubWebsocket
         try
         {
             TwitchApi.SendChatMessage("Connected to WebSocket!");
-            TwitchApi.SendChatAnnouncement("Connected to WebSocket!");
+         //   TwitchApi.SendChatAnnouncement("Connected to WebSocket!");
         }
         catch (Exception e)
         {
