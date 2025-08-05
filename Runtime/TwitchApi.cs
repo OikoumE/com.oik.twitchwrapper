@@ -142,8 +142,9 @@ public static class TwitchApi
         // For example, &user_id=1234&user_id=5678.
         var query = userIds.Aggregate("", (current, userId) => current + $"&user_id={userId}");
 
-        var response = GetStreams(query);
-        if (response != null) return TryDoPagination(response);
+        var max = userIds.Length;
+        var response = GetStreams(query, Mathf.Clamp(max, 1, 100));
+        if (response != null) return TryDoPagination(max, response);
         Debugs.LogError("No streams found");
         return null;
     }
@@ -160,8 +161,9 @@ public static class TwitchApi
         foreach (var userLogin in userLogins)
             query += $"&user_login={userLogin}";
 
-        var response = GetStreams(query);
-        if (response != null) return TryDoPagination(response);
+        var max = userLogins.Length;
+        var response = GetStreams(query, Mathf.Clamp(max, 1, 100));
+        if (response != null) return TryDoPagination(max, response);
         Debugs.LogError("No streams found");
         return null;
     }
@@ -176,21 +178,21 @@ public static class TwitchApi
         var query = "";
         foreach (var gameId in gameIds)
             query += $"&game_id={gameId}";
-
-        var response = GetStreams(query);
-        if (response != null) return TryDoPagination(response);
+        var max = 100;
+        var response = GetStreams(query, max);
+        if (response != null) return TryDoPagination(max, response);
         Debugs.LogError("No streams found");
         return null;
     }
 
-    private static StreamData[] TryDoPagination(StreamDataResponse response)
+    private static StreamData[] TryDoPagination(int max, StreamDataResponse response)
     {
         List<StreamData> streams = new();
         streams.AddRange(response.data);
 
         var maxIt = 100;
         var currIt = 0;
-        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
+        while (!string.IsNullOrEmpty(response?.pagination?.cursor) && streams.Count < max)
         {
             currIt++;
             if (currIt >= maxIt)
@@ -199,7 +201,7 @@ public static class TwitchApi
                 break;
             }
 
-            response = GetStreams("", response.pagination.cursor);
+            response = GetStreams("", max, response.pagination.cursor);
             if (response == null) break;
             streams.AddRange(response.data);
         }
@@ -207,13 +209,13 @@ public static class TwitchApi
         return streams.ToArray();
     }
 
-    public static StreamDataResponse GetStreams(string query, string cursor = "")
+    public static StreamDataResponse GetStreams(string query, int first = 100, string cursor = "")
     {
         // GetStreams : https://dev.twitch.tv/docs/api/reference/#get-streams
 
         if (!string.IsNullOrEmpty(query)) query = "&" + query;
 
-        var uri = $"https://api.twitch.tv/helix/streams?first=100{query}";
+        var uri = $"https://api.twitch.tv/helix/streams?first={first}{query}";
 
         if (!string.IsNullOrEmpty(cursor)) uri += "&after=" + cursor;
 
