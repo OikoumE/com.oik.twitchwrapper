@@ -143,33 +143,11 @@ public static class TwitchApi
         var query = userIds.Aggregate("", (current, userId) => current + $"&user_id={userId}");
 
         var response = GetStreams(query);
-        if (response == null)
-        {
-            Debugs.LogError("No streams found");
-            return null;
-        }
-
-        var streams = new List<StreamData>();
-        streams.AddRange(response.data);
-
-        var maxIt = 1000;
-        var currIt = 0;
-        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
-        {
-            currIt++;
-            if (currIt >= maxIt)
-            {
-                Debugs.LogError("Reached max iterations");
-                break;
-            }
-
-            response = GetStreams("", response.pagination.cursor);
-            if (response == null) break;
-            streams.AddRange(response.data);
-        }
-
-        return streams.ToArray();
+        if (response != null) return TryDoPagination(response);
+        Debugs.LogError("No streams found");
+        return null;
     }
+
 
     public static StreamData[] GetStreamsByUserLogin(string[] userLogins)
     {
@@ -182,34 +160,10 @@ public static class TwitchApi
         foreach (var userLogin in userLogins)
             query += $"&user_login={userLogin}";
 
-
         var response = GetStreams(query);
-        if (response == null)
-        {
-            Debugs.LogError("No streams found");
-            return null;
-        }
-
-        var streams = new List<StreamData>();
-        streams.AddRange(response.data);
-
-        var maxIt = 1000;
-        var currIt = 0;
-        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
-        {
-            currIt++;
-            if (currIt >= maxIt)
-            {
-                Debugs.LogError("Reached max iterations");
-                break;
-            }
-
-            response = GetStreams("", response.pagination.cursor);
-            if (response == null) break;
-            streams.AddRange(response.data);
-        }
-
-        return streams.ToArray();
+        if (response != null) return TryDoPagination(response);
+        Debugs.LogError("No streams found");
+        return null;
     }
 
     public static StreamData[] GetStreamsByGameId(string[] gameIds)
@@ -223,18 +177,18 @@ public static class TwitchApi
         foreach (var gameId in gameIds)
             query += $"&game_id={gameId}";
 
-
         var response = GetStreams(query);
-        if (response == null)
-        {
-            Debugs.LogError("No streams found");
-            return null;
-        }
+        if (response != null) return TryDoPagination(response);
+        Debugs.LogError("No streams found");
+        return null;
+    }
 
-        var streams = new List<StreamData>();
+    private static StreamData[] TryDoPagination(StreamDataResponse response)
+    {
+        List<StreamData> streams = new();
         streams.AddRange(response.data);
 
-        var maxIt = 1000;
+        var maxIt = 100;
         var currIt = 0;
         while (!string.IsNullOrEmpty(response?.pagination?.cursor))
         {
@@ -252,7 +206,6 @@ public static class TwitchApi
 
         return streams.ToArray();
     }
-
 
     public static StreamDataResponse GetStreams(string query, string cursor = "")
     {
