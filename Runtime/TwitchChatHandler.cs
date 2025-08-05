@@ -47,14 +47,22 @@ public class TwitchChatHandler
 
             #region CUSTOM COMMAND HANDLER
 
-            { new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" }), AddCommand },
-            { new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" }), EditCommand },
+            {
+                new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" },
+                    true, EventSubWebsocket.GetBroadcaster().broadcasterId),
+                AddCommand
+            },
+            {
+                new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" },
+                    true, EventSubWebsocket.GetBroadcaster().broadcasterId),
+                EditCommand
+            },
             {
                 new CommandString(new[]
                 {
                     "cmddelete", "cmdDelete", "deletecmd", "deleteCmd",
                     "cmdremove", "cmdRemove", "Removecmd", "removeCmd"
-                }),
+                }, true, EventSubWebsocket.GetBroadcaster().broadcasterId),
                 RemoveCommand
             }
 
@@ -132,7 +140,6 @@ public class TwitchChatHandler
 
     private void EditCommand(ChatCommand obj)
     {
-        if (obj.ChatterUserName.ToLower() != "itsoik") return;
         var messageText = obj.MessageText;
         var newResponseText = string.Join(" ", messageText.Split(" ")[1..]);
         var commandToChange = messageText.Split(" ")[0].Replace(obj.Identifier, "");
@@ -161,7 +168,6 @@ public class TwitchChatHandler
 
     private void AddCommand(ChatCommand obj)
     {
-        if (obj.ChatterUserName.ToLower() != "itsoik") return;
         var messageText = obj.MessageText;
         var commandToAdd = messageText.Split(" ")[0].Replace(obj.Identifier, "");
         Debugs.Log($"CommandToAdd: {commandToAdd}");
@@ -183,7 +189,6 @@ public class TwitchChatHandler
 
     private void RemoveCommand(ChatCommand obj)
     {
-        if (obj.ChatterUserName.ToLower() != "itsoik") return;
         var messageText = obj.MessageText;
         var commandToRemove = messageText.Split(" ")[0].Replace(obj.Identifier, "");
         Debugs.Log($"CommandToRemove {commandToRemove}");

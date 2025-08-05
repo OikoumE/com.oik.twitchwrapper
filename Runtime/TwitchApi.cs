@@ -121,17 +121,35 @@ public static class TwitchApi
 //TODO search:
 // channels : https://dev.twitch.tv/docs/api/reference/#search-channels
 // teams : https://dev.twitch.tv/docs/api/reference/#get-teams
+    private const string SoftwareAndGameDevId = "1469308723";
 
     public static StreamData[] GetAllDevStreams()
     {
-        var streams = new List<StreamData>();
-        var response = GetStreams();
+        //software & gameDevelopment
+        var response = GetStreamsByGameId(new[] { SoftwareAndGameDevId });
+        if (response != null) return response;
+        Debugs.LogError("No streams found");
+        return null;
+    }
+
+
+    public static StreamData[] GetStreamsByUserId(string[] userIds)
+    {
+        // A user ID used to filter the list of streams.
+        // Returns only the streams of those users that are broadcasting.
+        // You may specify a maximum of 100 IDs.
+        // To specify multiple IDs, include the user_id parameter for each user.
+        // For example, &user_id=1234&user_id=5678.
+        var query = userIds.Aggregate("", (current, userId) => current + $"&user_id={userId}");
+
+        var response = GetStreams(query);
         if (response == null)
         {
             Debugs.LogError("No streams found");
             return null;
         }
 
+        var streams = new List<StreamData>();
         streams.AddRange(response.data);
 
         var maxIt = 1000;
@@ -145,7 +163,7 @@ public static class TwitchApi
                 break;
             }
 
-            response = GetStreams(response.pagination.cursor);
+            response = GetStreams("", response.pagination.cursor);
             if (response == null) break;
             streams.AddRange(response.data);
         }
@@ -153,16 +171,98 @@ public static class TwitchApi
         return streams.ToArray();
     }
 
-    public static StreamDataResponse GetStreams(string cursor = "", string[] gameIds = null)
+    public static StreamData[] GetStreamsByUserLogin(string[] userLogins)
     {
-        // GetStreams : https://dev.twitch.tv/docs/api/reference/#get-streams
-        gameIds ??= new[] { "1469308723" };
+        // A user login name used to filter the list of streams.
+        // Returns only the streams of those users that are broadcasting.
+        // You may specify a maximum of 100 login names.
+        // To specify multiple names, include the user_login parameter for each user.
+        // For example, &user_login=foo&user_login=bar.
+        var query = "";
+        foreach (var userLogin in userLogins)
+            query += $"&user_login={userLogin}";
+
+
+        var response = GetStreams(query);
+        if (response == null)
+        {
+            Debugs.LogError("No streams found");
+            return null;
+        }
+
+        var streams = new List<StreamData>();
+        streams.AddRange(response.data);
+
+        var maxIt = 1000;
+        var currIt = 0;
+        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
+        {
+            currIt++;
+            if (currIt >= maxIt)
+            {
+                Debugs.LogError("Reached max iterations");
+                break;
+            }
+
+            response = GetStreams("", response.pagination.cursor);
+            if (response == null) break;
+            streams.AddRange(response.data);
+        }
+
+        return streams.ToArray();
+    }
+
+    public static StreamData[] GetStreamsByGameId(string[] gameIds)
+    {
+        // A game (category) ID used to filter the list of streams.
+        // Returns only the streams that are broadcasting the game (category).
+        // You may specify a maximum of 100 IDs.
+        // To specify multiple IDs, include the game_id parameter for each game.
+        // For example, &game_id=9876&game_id=5432.
         var query = "";
         foreach (var gameId in gameIds)
             query += $"&game_id={gameId}";
-        if (!string.IsNullOrEmpty(cursor))
-            query += "&after=" + cursor;
-        var uri = $"https://api.twitch.tv/helix/streams?first=100&{query}";
+
+
+        var response = GetStreams(query);
+        if (response == null)
+        {
+            Debugs.LogError("No streams found");
+            return null;
+        }
+
+        var streams = new List<StreamData>();
+        streams.AddRange(response.data);
+
+        var maxIt = 1000;
+        var currIt = 0;
+        while (!string.IsNullOrEmpty(response?.pagination?.cursor))
+        {
+            currIt++;
+            if (currIt >= maxIt)
+            {
+                Debugs.LogError("Reached max iterations");
+                break;
+            }
+
+            response = GetStreams("", response.pagination.cursor);
+            if (response == null) break;
+            streams.AddRange(response.data);
+        }
+
+        return streams.ToArray();
+    }
+
+
+    public static StreamDataResponse GetStreams(string query, string cursor = "")
+    {
+        // GetStreams : https://dev.twitch.tv/docs/api/reference/#get-streams
+
+        if (!string.IsNullOrEmpty(query)) query = "&" + query;
+
+        var uri = $"https://api.twitch.tv/helix/streams?first=100{query}";
+
+        if (!string.IsNullOrEmpty(cursor)) uri += "&after=" + cursor;
 
         var request = CreateDefaultRequest(HttpMethod.Get, uri);
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
@@ -172,7 +272,8 @@ public static class TwitchApi
         {
             var json = response.Content.ReadAsStringAsync().Result;
             var result = JsonConvert.DeserializeObject<StreamDataResponse>(json);
-            if (result != null) return result;
+            if (result != null)
+                return result;
         }
         else
         {
