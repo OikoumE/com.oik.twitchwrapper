@@ -29,6 +29,7 @@ public class TwitchChatHandler
 
     private void SetupCommands(Dictionary<CommandString, Action<ChatCommand>> commands)
     {
+        var broadcasterId = EventSubWebsocket.GetBroadcaster().broadcasterId;
         _commands = new Dictionary<CommandString, Action<ChatCommand>>
         {
             #region SILLY COMMANDS
@@ -49,20 +50,21 @@ public class TwitchChatHandler
 
             {
                 new CommandString(new[] { "cmdadd", "cmdAdd", "addcmd", "addCmd" },
-                    true, EventSubWebsocket.GetBroadcaster().broadcasterId),
+                    true, broadcasterId),
                 AddCommand
             },
             {
                 new CommandString(new[] { "cmdedit", "cmdEdit", "editcmd", "editCmd" },
-                    true, EventSubWebsocket.GetBroadcaster().broadcasterId),
+                    true, broadcasterId),
                 EditCommand
             },
             {
                 new CommandString(new[]
-                {
-                    "cmddelete", "cmdDelete", "deletecmd", "deleteCmd",
-                    "cmdremove", "cmdRemove", "Removecmd", "removeCmd"
-                }, true, EventSubWebsocket.GetBroadcaster().broadcasterId),
+                    {
+                        "cmddelete", "cmdDelete", "deletecmd", "deleteCmd", "cmdremove", "cmdRemove", "Removecmd",
+                        "removeCmd"
+                    },
+                    true, broadcasterId),
                 RemoveCommand
             }
 

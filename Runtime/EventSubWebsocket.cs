@@ -35,6 +35,8 @@ public class EventSubWebsocket
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
+    private readonly Dictionary<CommandString, Action<ChatCommand>> _chatCommands;
+    private readonly string[] _ignoreChatCommandFrom;
 
     private bool _isConnecting;
     private string _sessionId;
@@ -62,7 +64,8 @@ public class EventSubWebsocket
         var apiScopes = TwitchEventSubScopes.GetUrlScopes(_eventHandlers.Keys.ToArray());
 
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
-        SetupChatHandler(chatCommands, ignoreChatCommandFrom);
+        _chatCommands = chatCommands;
+        _ignoreChatCommandFrom = ignoreChatCommandFrom;
         instance = this;
     }
 
@@ -82,7 +85,10 @@ public class EventSubWebsocket
         apiScopes = apiScopes.Concat(TwitchApiScopes.GetUrlScopes(extraScopes)).ToArray();
         //TODO add extra scopes
         _authenticator = new TwitchAuthenticator(clientId, apiScopes);
-        SetupChatHandler(chatCommands, ignoreChatCommandFrom);
+        _chatCommands = chatCommands;
+        _ignoreChatCommandFrom = ignoreChatCommandFrom;
+
+
         instance = this;
     }
 
@@ -98,11 +104,9 @@ public class EventSubWebsocket
         return _tokenResponse;
     }
 
-    private void SetupChatHandler(
-        Dictionary<CommandString, Action<ChatCommand>> chatCommands,
-        string[] ignoreChatCommandFrom)
+    private void SetupChatHandler()
     {
-        ChatHandler = new TwitchChatHandler(this, chatCommands, ignoreChatCommandFrom);
+        ChatHandler = new TwitchChatHandler(this, _chatCommands, _ignoreChatCommandFrom);
         var chatScope = TwitchEventSubScopes.EScope.ChannelChatMessage;
         if (!_eventHandlers.TryGetValue(chatScope, out var handler))
         {
@@ -180,7 +184,7 @@ public class EventSubWebsocket
         (_ws, _cts) = PrepareConnection();
         //! twitch API require cts (PrepareConnection();)
         TwitchApi.Init(_clientId, out _broadcasterName, out _broadcasterId);
-
+        SetupChatHandler();
         var uri = CreateUri(_keepAlive);
         await ConnectAndHandleMessages(uri);
     }
