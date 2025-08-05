@@ -140,8 +140,9 @@ public static class TwitchApi
         // You may specify a maximum of 100 IDs.
         // To specify multiple IDs, include the user_id parameter for each user.
         // For example, &user_id=1234&user_id=5678.
-        var query = userIds.Aggregate("", (current, userId) => current + $"&user_id={userId}");
-
+        var query = "";
+        foreach (var userLogin in userIds)
+            query += $"&user_id={userLogin}";
         var max = userIds.Length;
         var response = GetStreams(query, Mathf.Clamp(max, 1, 100));
         if (response != null) return TryDoPagination(max, response);
