@@ -291,7 +291,53 @@ public static class TwitchApi
 
     #region CHAT
 
+    public static bool SendShoutout(string toBroadcasterId, int attempt = 0)
+    {
+        //https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
+        //POST https://api.twitch.tv/helix/chat/shoutouts
+
+        if (DateTime.Now - _lastShoutoutSent < TimeSpan.FromSeconds(125))
+        {
+            SendChatMessage("Announcement is on cooldown");
+            return false;
+        }
+
+        var broadcasterId = EventSubWebsocket.GetBroadcaster().broadcasterId;
+        var uri =
+            $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={broadcasterId}&to_broadcaster_id={toBroadcasterId}&moderator_id={broadcasterId}";
+        var request = CreateDefaultRequest(HttpMethod.Post, uri);
+        var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
+        var response = HttpClient.SendAsync(request, ct).Result;
+
+        if (response.IsSuccessStatusCode)
+        {
+            _lastShoutoutSent = DateTime.Now;
+            Debugs.Log("Sent shoutOut: " + toBroadcasterId);
+            return true;
+        }
+
+        if (response.StatusCode == HttpStatusCode.Unauthorized)
+        {
+            if (attempt > 3)
+            {
+                Debugs.LogError("failed to refresh token and resend message");
+                return false;
+            }
+
+            Debugs.LogError("Failed to send shoutout, attempting to refresh token");
+            _ = EventSubWebsocket.instance.Handle401();
+            Debugs.LogWarning("Token refreshed, attempting to resend chat message");
+            return SendShoutout(broadcasterId, attempt + 1);
+        }
+
+
+        var error = response.Content.ReadAsStringAsync().Result;
+        Debugs.LogError(error);
+        return false;
+    }
+
     private static DateTime _lastAnnouncementSent;
+    private static DateTime _lastShoutoutSent;
 
     public static void SendChatAnnouncement(string announcement,
         AnnouncementColor announcementColor = AnnouncementColor.Primary, int attempt = 0)
