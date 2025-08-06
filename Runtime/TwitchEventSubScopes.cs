@@ -253,7 +253,10 @@ public static class TwitchEventSubScopes
                 or EScope.ChannelGuestStarSessionBegin
                 or EScope.ChannelGuestStarSessionEnd
                 or EScope.ChannelGuestStarSettingsUpdate
-                or EScope.ChannelFollow => new
+                or EScope.ChannelFollow
+                or EScope.ChannelShoutoutCreate
+                or EScope.ChannelShoutoutReceive
+                => new
                 {
                     broadcaster_user_id = broadcasterId, moderator_user_id = broadcasterId
                 },
