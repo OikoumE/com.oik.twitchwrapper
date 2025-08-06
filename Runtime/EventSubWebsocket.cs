@@ -31,12 +31,12 @@ public class EventSubWebsocket
     private static string _broadcasterId;
     private static string _broadcasterName;
     private readonly TwitchAuthenticator _authenticator;
+    private readonly Dictionary<CommandString, Action<ChatCommand>> _chatCommands;
     private readonly string _clientId;
     private readonly Dictionary<TwitchEventSubScopes.EScope, Action<JObject>> _eventHandlers;
+    private readonly string[] _ignoreChatCommandFrom;
     private readonly int _keepAlive;
     private readonly StringCollection _messageIds = new();
-    private readonly Dictionary<CommandString, Action<ChatCommand>> _chatCommands;
-    private readonly string[] _ignoreChatCommandFrom;
 
     private bool _isConnecting;
     private string _sessionId;
@@ -438,7 +438,7 @@ public class EventSubWebsocket
         {
             // Handle error
             var responseBody = response.Content.ReadAsStringAsync().Result;
-            Debugs.LogError($"Error when subscribing:{response.StatusCode}, {responseBody}");
+            Debugs.LogError($"Error when subscribing {scope}:{response.StatusCode}, {responseBody}");
         }
     }
 
@@ -447,20 +447,47 @@ public class EventSubWebsocket
         return (_broadcasterName, _broadcasterId);
     }
 
-    private object GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
+    private SubscriptionData GetSubscriptionCondition(TwitchEventSubScopes.EScope scope)
     {
         var eventSubScope = TwitchEventSubScopes.GetApiVersion(scope, _broadcasterId, out var subCondition);
-        var subscriptionData = new
+        // var subscriptionData = new
+        // {
+        //     type = eventSubScope.ApiName,
+        //     version = eventSubScope.Version,
+        //     condition = subCondition,
+        //     transport = new
+        //     {
+        //         method = "websocket",
+        //         session_id = _sessionId
+        //     }
+        // };
+        // return subscriptionData;
+        return new SubscriptionData
         {
             type = eventSubScope.ApiName,
             version = eventSubScope.Version,
             condition = subCondition,
-            transport = new
+            transport = new SubscriptionData.Transport
             {
                 method = "websocket",
                 session_id = _sessionId
             }
         };
-        return subscriptionData;
+    }
+}
+
+public class SubscriptionData
+{
+    public object condition;
+
+    public string SessionId;
+    public Transport transport;
+    public string type;
+    public string version;
+
+    public class Transport
+    {
+        public string method;
+        public string session_id;
     }
 }

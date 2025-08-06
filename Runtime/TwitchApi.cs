@@ -79,7 +79,7 @@ public static class TwitchApi
 
     #region WEBSOCKET
 
-    public static HttpResponseMessage SubscribeToEvents(object subscriptionData)
+    public static HttpResponseMessage SubscribeToEvents(SubscriptionData subscriptionData)
     {
         var uri = "https://api.twitch.tv/helix/eventsub/subscriptions";
         var request = CreateDefaultRequest(HttpMethod.Post, uri);
@@ -89,7 +89,9 @@ public static class TwitchApi
         var result = HttpClient.SendAsync(request, ct).Result;
         if (result.IsSuccessStatusCode)
             return result;
-        Debugs.LogError(result.StatusCode);
+        Debugs.LogError(
+            $"Failed to subscribe to event {subscriptionData.type}, statuc: {result.StatusCode}, reason: {result.ReasonPhrase}");
+        Debug.LogWarning("Ensure you have correct condition for event");
         throw new HttpRequestException("Failed to subscribe to event");
     }
 
