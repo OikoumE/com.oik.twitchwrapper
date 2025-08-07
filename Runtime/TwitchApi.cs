@@ -298,7 +298,7 @@ public static class TwitchApi
 
         if (DateTime.Now - _lastShoutoutSent < TimeSpan.FromSeconds(125))
         {
-            SendChatMessage("Announcement is on cooldown");
+            SendChatMessage("Shoutout is on cooldown");
             return false;
         }
 
