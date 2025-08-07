@@ -199,7 +199,6 @@ public class EventSubWebsocket
         Debugs.Log($"WebSocket Status: {status}");
         SendSuccessToChat();
         await Task.WhenAny(HandleMessageAsync(), Task.Delay(-1, _cts.Token));
-        _isConnecting = false;
     }
 
     private void SendSuccessToChat()
@@ -263,6 +262,7 @@ public class EventSubWebsocket
 
     private async Task HandleMessageAsync()
     {
+        _isConnecting = false;
         Debugs.Log("<color=green>Listening</color> to messages");
         var buffer = new byte[4096];
         while (_ws.State == WebSocketState.Open && _cts.Token.IsCancellationRequested == false)
@@ -322,8 +322,10 @@ public class EventSubWebsocket
         }
         catch (Exception e)
         {
-            Debugs.LogError($"EventSubWebSocket : Error when parsing json; original message: {msg}");
-            Console.WriteLine(e);
+            //TODO something errors here
+            Debugs.LogError("EventSubWebSocket : Error when parsing json; original message: ");
+            Debugs.LogError($"failed parsed msg {msg} ");
+            Debugs.LogError(e);
             throw;
         }
 
@@ -336,6 +338,9 @@ public class EventSubWebsocket
         }
 
         _messageIds.Add(messageId);
+        if (_messageIds.Count > 100)
+            _messageIds.RemoveAt(0);
+
         var type = metaData?["message_type"]?.ToString();
         switch (type)
         {
