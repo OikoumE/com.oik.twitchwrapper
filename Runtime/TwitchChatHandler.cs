@@ -60,11 +60,10 @@ public class TwitchChatHandler
             },
             {
                 new CommandString(new[]
-                    {
-                        "cmddelete", "cmdDelete", "deletecmd", "deleteCmd", "cmdremove", "cmdRemove", "Removecmd",
-                        "removeCmd"
-                    },
-                    true, broadcasterId),
+                {
+                    "cmddelete", "cmdDelete", "deletecmd", "deleteCmd", "cmdremove", "cmdRemove",
+                    "Removecmd", "removeCmd"
+                }, true, broadcasterId),
                 RemoveCommand
             }
 
@@ -407,7 +406,13 @@ public class TwitchChatHandler
     {
         var defaultCommands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
         var reply = string.Join(", ", defaultCommands);
-        TwitchApi.SendChatMessage(reply);
+        const int maxChar = 450;
+
+        for (var i = 0; i < reply.Length; i += maxChar)
+        {
+            var len = Math.Min(maxChar, reply.Length - i);
+            TwitchApi.SendChatMessage(reply.Substring(i, len));
+        }
     }
 
     #endregion
