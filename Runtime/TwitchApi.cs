@@ -296,7 +296,7 @@ public static class TwitchApi
         //https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
         //POST https://api.twitch.tv/helix/chat/shoutouts
 
-        if (DateTime.Now - _lastShoutoutSent < TimeSpan.FromSeconds(125))
+        if (DateTime.UtcNow - _lastShoutoutSent < TimeSpan.FromSeconds(125))
         {
             SendChatMessage("Shoutout is on cooldown");
             return false;
@@ -311,7 +311,7 @@ public static class TwitchApi
 
         if (response.IsSuccessStatusCode)
         {
-            _lastShoutoutSent = DateTime.Now;
+            _lastShoutoutSent = DateTime.UtcNow;
             Debugs.Log("Sent shoutOut: " + toBroadcasterId);
             return true;
         }
@@ -342,7 +342,7 @@ public static class TwitchApi
     public static void SendChatAnnouncement(string announcement,
         AnnouncementColor announcementColor = AnnouncementColor.Primary, int attempt = 0)
     {
-        if (DateTime.Now - _lastAnnouncementSent < TimeSpan.FromSeconds(2))
+        if (DateTime.UtcNow - _lastAnnouncementSent < TimeSpan.FromSeconds(2))
         {
             SendChatMessage("Announcement is on cooldown");
             return;
@@ -367,7 +367,7 @@ public static class TwitchApi
         var response = HttpClient.SendAsync(request, ct).Result;
         if (response.IsSuccessStatusCode)
         {
-            _lastAnnouncementSent = DateTime.Now;
+            _lastAnnouncementSent = DateTime.UtcNow;
             Debugs.Log("Sent chat announcement: " + announcement);
         }
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
