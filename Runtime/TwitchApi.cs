@@ -304,7 +304,10 @@ public static class TwitchApi
 
         var broadcasterId = EventSubWebsocket.GetBroadcaster().broadcasterId;
         var uri =
-            $"https://api.twitch.tv/helix/chat/shoutouts?from_broadcaster_id={broadcasterId}&to_broadcaster_id={toBroadcasterId}&moderator_id={broadcasterId}";
+            "https://api.twitch.tv/helix/chat/shoutouts" +
+            $"?from_broadcaster_id={broadcasterId}" +
+            $"&to_broadcaster_id={toBroadcasterId}" +
+            $"&moderator_id={broadcasterId}";
         var request = CreateDefaultRequest(HttpMethod.Post, uri);
         var ct = EventSubWebsocket.GetCancellationTokenSource().Token;
         var response = HttpClient.SendAsync(request, ct).Result;

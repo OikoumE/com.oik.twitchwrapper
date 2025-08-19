@@ -39,6 +39,11 @@ public class ChatCommand
     public readonly string Identifier;
 
     /// <summary>
+    ///     The Id of the Message
+    /// </summary>
+    public readonly string MessageId;
+
+    /// <summary>
     ///     MessageText is stripped of CommandText and Identifier
     /// </summary>
     public readonly string MessageText;
@@ -54,6 +59,7 @@ public class ChatCommand
         ChatterUserLogin = msg.ChatterUserLogin;
         ChatterUserName = msg.ChatterUserName;
         ChatterColor = msg.ChatterColor;
+        MessageId = msg.MessageId;
         _timestamp = DateTime.Now;
     }
 

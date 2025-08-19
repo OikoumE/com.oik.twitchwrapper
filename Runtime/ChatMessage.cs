@@ -25,14 +25,20 @@ public class ChatMessage
     public readonly string ChatterUserName;
 
     /// <summary>
+    ///     The Id of the Message
+    /// </summary>
+    public readonly string MessageId;
+
+    /// <summary>
     ///     The Text of the Message
     /// </summary>
     public readonly string MessageText;
 
     public ChatMessage(string messageText, string chatterUserId, string chatterUserLogin,
-        string chatterUserName, string color)
+        string chatterUserName, string color, string messageId)
     {
         ChatterColor = color;
+        MessageId = messageId;
         MessageText = messageText;
         ChatterUserId = chatterUserId;
         ChatterUserLogin = chatterUserLogin;
