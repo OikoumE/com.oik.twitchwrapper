@@ -404,15 +404,22 @@ public class TwitchChatHandler
 
     private void AvailableCommands(ChatCommand _)
     {
-        var defaultCommands = _commands.Keys.Select(x => x.Commands[0]).ToArray();
-        var reply = string.Join(", ", defaultCommands);
-        const int maxChar = 450;
-
-        for (var i = 0; i < reply.Length; i += maxChar)
+        var defaultCommands = _commands.Keys.Select(x => x.Commands[0]).ToList();
+        const int maxChar = 425;
+        var commands = "Available commands: ";
+        foreach (var cmd in defaultCommands)
         {
-            var len = Math.Min(maxChar, reply.Length - i);
-            TwitchApi.SendChatMessage(reply.Substring(i, len));
+            if (commands.Length + cmd.Length + 2 > maxChar)
+            {
+                TwitchApi.SendChatMessage(commands.TrimEnd(',', ' '));
+                commands = "";
+            }
+
+            commands += cmd + ", ";
         }
+
+        if (string.IsNullOrWhiteSpace(commands)) return;
+        TwitchApi.SendChatMessage(commands.TrimEnd(',', ' '));
     }
 
     #endregion
