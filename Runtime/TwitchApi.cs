@@ -291,12 +291,15 @@ public static class TwitchApi
 
     #region CHAT
 
+    private static readonly TimeSpan ShoutoutCooldown = TimeSpan.FromSeconds(125);
+    private static DateTime _nextAvailableShoutout = DateTime.UtcNow + TimeSpan.FromSeconds(125);
+
     public static bool SendShoutout(string toBroadcasterId, int attempt = 0)
     {
         //https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
         //POST https://api.twitch.tv/helix/chat/shoutouts
 
-        if (DateTime.UtcNow - _lastShoutoutSent < TimeSpan.FromSeconds(125))
+        if (DateTime.UtcNow < _nextAvailableShoutout)
         {
             SendChatMessage("Shoutout is on cooldown");
             return false;
@@ -314,7 +317,7 @@ public static class TwitchApi
 
         if (response.IsSuccessStatusCode)
         {
-            _lastShoutoutSent = DateTime.UtcNow;
+            _nextAvailableShoutout = DateTime.UtcNow + ShoutoutCooldown;
             Debugs.Log("Sent shoutOut: " + toBroadcasterId);
             return true;
         }
@@ -339,13 +342,14 @@ public static class TwitchApi
         return false;
     }
 
-    private static DateTime _lastAnnouncementSent;
-    private static DateTime _lastShoutoutSent;
+    private static readonly TimeSpan AnnouncementCooldown = TimeSpan.FromSeconds(2);
+    private static DateTime _nextAvailableAnnouncement = DateTime.UtcNow + TimeSpan.FromSeconds(2);
+
 
     public static void SendChatAnnouncement(string announcement,
         AnnouncementColor announcementColor = AnnouncementColor.Primary, int attempt = 0)
     {
-        if (DateTime.UtcNow - _lastAnnouncementSent < TimeSpan.FromSeconds(2))
+        if (DateTime.UtcNow > _nextAvailableAnnouncement)
         {
             SendChatMessage("Announcement is on cooldown");
             return;
@@ -355,8 +359,9 @@ public static class TwitchApi
         //https://dev.twitch.tv/docs/api/reference/#send-chat-announcement
         //-d '{"message":"Hello chat!","color":"purple"}'
         //TODO
-        var uri =
-            $"https://api.twitch.tv/helix/chat/announcements?broadcaster_id={_broadcasterId}&moderator_id={_broadcasterId}";
+        var uri = "https://api.twitch.tv/helix/chat/announcements" +
+                  $"?broadcaster_id={_broadcasterId}" +
+                  $"&moderator_id={_broadcasterId}";
         var request = CreateDefaultRequest(HttpMethod.Post, uri);
         var payload = new
         {
@@ -370,7 +375,7 @@ public static class TwitchApi
         var response = HttpClient.SendAsync(request, ct).Result;
         if (response.IsSuccessStatusCode)
         {
-            _lastAnnouncementSent = DateTime.UtcNow;
+            _nextAvailableAnnouncement = DateTime.UtcNow + AnnouncementCooldown;
             Debugs.Log("Sent chat announcement: " + announcement);
         }
         else if (response.StatusCode == HttpStatusCode.Unauthorized)
