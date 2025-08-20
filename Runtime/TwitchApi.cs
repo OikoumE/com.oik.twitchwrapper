@@ -294,14 +294,14 @@ public static class TwitchApi
     private static readonly TimeSpan ShoutoutCooldown = TimeSpan.FromSeconds(125);
     private static DateTime _nextAvailableShoutout = DateTime.UtcNow + TimeSpan.FromSeconds(125);
 
-    public static bool SendShoutout(string toBroadcasterId, int attempt = 0)
+    public static bool SendShoutout(string toBroadcasterId, string userName, int attempt = 0)
     {
         //https://dev.twitch.tv/docs/api/reference/#send-a-shoutout
         //POST https://api.twitch.tv/helix/chat/shoutouts
 
         if (DateTime.UtcNow < _nextAvailableShoutout)
         {
-            SendChatMessage("Shoutout is on cooldown");
+            SendChatMessage($"Shoutout is on cooldown (user: {userName}, attempts: {attempt})");
             return false;
         }
 
@@ -333,7 +333,7 @@ public static class TwitchApi
             Debugs.LogError("Failed to send shoutout, attempting to refresh token");
             _ = EventSubWebsocket.instance.Handle401();
             Debugs.LogWarning("Token refreshed, attempting to resend chat message");
-            return SendShoutout(broadcasterId, attempt + 1);
+            return SendShoutout(broadcasterId, userName, attempt + 1);
         }
 
 
