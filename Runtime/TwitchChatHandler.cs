@@ -415,7 +415,7 @@ public class TwitchChatHandler
             if (_customCommands.Keys.Contains(cmd))
             {
                 hasSaidCustom = true;
-                commands += "- Custom: "
+                commands += "- Custom: ";
             }
             if (commands.Length + cmd.Length + 2 > maxChar)
             {
