@@ -411,7 +411,7 @@ public class TwitchChatHandler
         bool hasSaidCustom = false;
         foreach (var cmd in defaultCommands)
         {
-            if (_customCommands.Keys.Contains(cmd))
+            if (!hasSaidCustom && _customCommands.Keys.Contains(cmd))
             {
                 hasSaidCustom = true;
                 commands += "- Custom: ";
