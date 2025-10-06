@@ -208,6 +208,7 @@ public class TwitchChatHandler
         var command = _commands.FirstOrDefault(x => x.Key.Commands.Contains(commandToRemove));
         if (command is { Key: not null, Value: not null })
             _commands.Remove(command.Key);
+        SaveToJson();
     }
 
     #endregion
