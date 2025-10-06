@@ -408,8 +408,15 @@ public class TwitchChatHandler
         var defaultCommands = _commands.Keys.Select(x => x.Commands[0]).ToList();
         const int maxChar = 425;
         var commands = "Available commands: ";
+        _custemCommands
+        bool hasSaidCustom = false;
         foreach (var cmd in defaultCommands)
         {
+            if (_customCommands.Keys.Contains(cmd))
+            {
+                hasSaidCustom = true;
+                commands += "- Custom: "
+            }
             if (commands.Length + cmd.Length + 2 > maxChar)
             {
                 TwitchApi.SendChatMessage(commands.TrimEnd(',', ' '));
